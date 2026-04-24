@@ -8,7 +8,7 @@ problem_type: strategy
 
 > Date: 2026-04-21
 > Competitor repo: https://github.com/nashsu/llm_wiki (~2000 stars)
-> Our repo: https://github.com/sdyckjq-lab/llm-wiki-skill (~1000 stars)
+> Our repo: https://github.com/TiM1113/llm-wiki-skill (~1000 stars)
 
 ## Context
 

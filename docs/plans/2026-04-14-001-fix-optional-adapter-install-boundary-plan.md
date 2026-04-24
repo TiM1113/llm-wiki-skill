@@ -316,8 +316,8 @@ All install and state judgments only read this shared result, no longer locally 
 
 ## Sources & References
 
-- **Origin document:** [docs/brainstorms/2026-04-06-project-cleanup-and-restructuring-requirements.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/docs/brainstorms/2026-04-06-project-cleanup-and-restructuring-requirements.md)
-- Related plan: [docs/plans/2026-04-06-002-phase-b-core-and-adapter-separation-plan.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/docs/plans/2026-04-06-002-phase-b-core-and-adapter-separation-plan.md)
-- Related solution: [docs/solutions/integration-issues/unify-optional-adapter-states-and-fallback-paths-2026-04-06.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/docs/solutions/integration-issues/unify-optional-adapter-states-and-fallback-paths-2026-04-06.md)
-- Related solution: [docs/solutions/logic-errors/lint-runner-index-path-and-install-sync-2026-04-14.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/docs/solutions/logic-errors/lint-runner-index-path-and-install-sync-2026-04-14.md)
-- Related todo: [.context/compound-engineering/todos/005-pending-p2-separate-source-and-installed-skill-paths.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/.context/compound-engineering/todos/005-pending-p2-separate-source-and-installed-skill-paths.md)
+- **Origin document:** [docs/brainstorms/2026-04-06-project-cleanup-and-restructuring-requirements.md](~/Desktop/project/llm-wiki-skill/docs/brainstorms/2026-04-06-project-cleanup-and-restructuring-requirements.md)
+- Related plan: [docs/plans/2026-04-06-002-phase-b-core-and-adapter-separation-plan.md](~/Desktop/project/llm-wiki-skill/docs/plans/2026-04-06-002-phase-b-core-and-adapter-separation-plan.md)
+- Related solution: [docs/solutions/integration-issues/unify-optional-adapter-states-and-fallback-paths-2026-04-06.md](~/Desktop/project/llm-wiki-skill/docs/solutions/integration-issues/unify-optional-adapter-states-and-fallback-paths-2026-04-06.md)
+- Related solution: [docs/solutions/logic-errors/lint-runner-index-path-and-install-sync-2026-04-14.md](~/Desktop/project/llm-wiki-skill/docs/solutions/logic-errors/lint-runner-index-path-and-install-sync-2026-04-14.md)
+- Related todo: [.context/compound-engineering/todos/005-pending-p2-separate-source-and-installed-skill-paths.md](~/Desktop/project/llm-wiki-skill/.context/compound-engineering/todos/005-pending-p2-separate-source-and-installed-skill-paths.md)

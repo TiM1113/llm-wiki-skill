@@ -578,7 +578,7 @@ Constraints:
 Before every actual `git push`, execute per repo rules:
 - `bash install.sh --dry-run --platform codex`
 - Run affected fixtures / regression
-- `grep -r '/Users/kangjiaqi\|康佳琦' scripts/ templates/ tests/ SKILL.md`
+- `grep -r '~\|康佳琦' scripts/ templates/ tests/ SKILL.md`
 - Update `CHANGELOG.md` / `README.md` / version number (if it is a feat/fix)
 
 ## Risks
