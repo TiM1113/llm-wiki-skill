@@ -1,51 +1,51 @@
-# 知识库索引
+# Wiki Index
 
-> 最后更新：{{DATE}}
-
----
-
-## 概览
-
-- 主题：{{TOPIC}}
-- 素材总数：0
-- Wiki 页面总数：0
+> Last updated: {{DATE}}
 
 ---
 
-## 实体页
+## Overview
 
-> 人物、组织、概念、工具等
-
-（暂无）
-
----
-
-## 主题页
-
-> 研究主题、知识领域
-
-（暂无）
+- Topic: {{TOPIC}}
+- Total sources: 0
+- Total wiki pages: 0
 
 ---
 
-## 素材摘要
+## Entity Pages
 
-> 每个消化过的素材都有一篇摘要
+> People, organizations, concepts, tools
 
-（暂无）
-
----
-
-## 对比分析
-
-> 对比不同方案、工具、观点
-
-（暂无）
+(none yet)
 
 ---
 
-## 综合分析
+## Topic Pages
 
-> 跨素材的深度分析
+> Research topics, knowledge domains
 
-（暂无）
+(none yet)
+
+---
+
+## Source Summaries
+
+> One summary page per ingested source
+
+(none yet)
+
+---
+
+## Comparisons
+
+> Side-by-side analysis of options, tools, viewpoints
+
+(none yet)
+
+---
+
+## Synthesis
+
+> Deep cross-source analysis
+
+(none yet)

@@ -1,12 +1,12 @@
 #!/bin/bash
-# llm-wiki 删除辅助脚本
+# llm-wiki deletion helper script
 
 set -euo pipefail
 
 usage() {
   cat <<'EOF'
-用法：
-  bash scripts/delete-helper.sh scan-refs <wiki_root> <素材文件名>
+Usage:
+  bash scripts/delete-helper.sh scan-refs <wiki_root> <material_filename>
 EOF
 }
 
@@ -16,12 +16,12 @@ scan_refs() {
   local wiki_dir="$wiki_root/wiki"
 
   [ -n "$needle" ] || {
-    echo "素材文件名不能为空" >&2
+    echo "Material filename cannot be empty" >&2
     exit 1
   }
 
   [ -d "$wiki_dir" ] || {
-    echo "知识库目录不存在：$wiki_dir" >&2
+    echo "Wiki directory not found: $wiki_dir" >&2
     exit 1
   }
 

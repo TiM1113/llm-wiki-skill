@@ -1,6 +1,6 @@
 #!/bin/bash
-# 统一来源总表读取与验证脚本
-# 权威数据文件：source-registry.tsv（来源定义）、source-record-contract.tsv（字段契约）
+# Unified source registry read and validation script
+# Authoritative data files: source-registry.tsv (source definitions), source-record-contract.tsv (field contract)
 
 set -euo pipefail
 
@@ -10,7 +10,7 @@ REGISTRY_FILE="$SCRIPT_DIR/source-registry.tsv"
 
 usage() {
   cat <<'EOF'
-用法：
+Usage:
   bash scripts/source-registry.sh fields
   bash scripts/source-registry.sh list
   bash scripts/source-registry.sh get <source_id>
@@ -26,7 +26,7 @@ require_file() {
   local file="$1"
 
   [ -f "$file" ] || {
-    echo "缺少文件：$file" >&2
+    echo "Missing file: $file" >&2
     exit 1
   }
 }
@@ -38,9 +38,9 @@ expect_header() {
 
   actual="$(head -n 1 "$file")"
   [ "$actual" = "$expected" ] || {
-    echo "表头不匹配：$file" >&2
-    echo "期望：$expected" >&2
-    echo "实际：$actual" >&2
+    echo "Header mismatch: $file" >&2
+    echo "Expected: $expected" >&2
+    echo "Actual: $actual" >&2
     exit 1
   }
 }
@@ -64,7 +64,7 @@ validate_contract() {
     NR == 1 { next }
     {
       if ($1 == "" || $2 == "" || $3 == "" || $4 == "") {
-        printf("source-record-contract.tsv 第 %d 行存在空字段\n", NR) > "/dev/stderr"
+        printf("source-record-contract.tsv row %d has empty fields\n", NR) > "/dev/stderr"
         failed = 1
       }
 
@@ -73,7 +73,7 @@ validate_contract() {
     END {
       for (field in required) {
         if (seen[field] != 1) {
-          printf("source-record-contract.tsv 缺少或重复字段：%s\n", field) > "/dev/stderr"
+          printf("source-record-contract.tsv missing or duplicate field: %s\n", field) > "/dev/stderr"
           failed = 1
         }
       }
@@ -91,47 +91,47 @@ validate_registry() {
     NR == 1 { next }
     {
       if ($1 == "" || $2 == "" || $3 == "" || $4 == "" || $5 == "" || $6 == "" || $10 == "") {
-        printf("source-registry.tsv 第 %d 行存在空字段\n", NR) > "/dev/stderr"
+        printf("source-registry.tsv row %d has empty fields\n", NR) > "/dev/stderr"
         failed = 1
       }
 
       if ($3 != "core_builtin" && $3 != "optional_adapter" && $3 != "manual_only") {
-        printf("source-registry.tsv 第 %d 行存在未知分类：%s\n", NR, $3) > "/dev/stderr"
+        printf("source-registry.tsv row %d has unknown category: %s\n", NR, $3) > "/dev/stderr"
         failed = 1
       }
 
       if ($4 != "url" && $4 != "file" && $4 != "text" && $4 != "asset") {
-        printf("source-registry.tsv 第 %d 行存在未知输入模式：%s\n", NR, $4) > "/dev/stderr"
+        printf("source-registry.tsv row %d has unknown input mode: %s\n", NR, $4) > "/dev/stderr"
         failed = 1
       }
 
       if ($4 == "url" && $5 !~ /^url_host:/) {
-        printf("source-registry.tsv 第 %d 行 URL 来源必须声明 url_host 规则：%s\n", NR, $5) > "/dev/stderr"
+        printf("source-registry.tsv row %d URL source must declare url_host rule: %s\n", NR, $5) > "/dev/stderr"
         failed = 1
       }
 
       if ($4 == "file" && $5 !~ /^file_ext:/) {
-        printf("source-registry.tsv 第 %d 行文件来源必须声明 file_ext 规则：%s\n", NR, $5) > "/dev/stderr"
+        printf("source-registry.tsv row %d file source must declare file_ext rule: %s\n", NR, $5) > "/dev/stderr"
         failed = 1
       }
 
       if ($4 == "text" && $5 !~ /^text:/) {
-        printf("source-registry.tsv 第 %d 行文本来源必须声明 text 规则：%s\n", NR, $5) > "/dev/stderr"
+        printf("source-registry.tsv row %d text source must declare text rule: %s\n", NR, $5) > "/dev/stderr"
         failed = 1
       }
 
       if ($4 == "asset" && $5 !~ /^asset:/) {
-        printf("source-registry.tsv 第 %d 行附件来源必须声明 asset 规则：%s\n", NR, $5) > "/dev/stderr"
+        printf("source-registry.tsv row %d asset source must declare asset rule: %s\n", NR, $5) > "/dev/stderr"
         failed = 1
       }
 
       if ($6 !~ /^raw\//) {
-        printf("source-registry.tsv 第 %d 行 raw_dir 必须位于 raw/ 下：%s\n", NR, $6) > "/dev/stderr"
+        printf("source-registry.tsv row %d raw_dir must be under raw/: %s\n", NR, $6) > "/dev/stderr"
         failed = 1
       }
 
       if (seen[$1]++) {
-        printf("source-registry.tsv source_id 重复：%s\n", $1) > "/dev/stderr"
+        printf("source-registry.tsv duplicate source_id: %s\n", $1) > "/dev/stderr"
         failed = 1
       }
 
@@ -139,27 +139,27 @@ validate_registry() {
 
       if ($3 == "optional_adapter") {
         if ($7 == "-" || $8 == "-" || $9 == "none") {
-          printf("source-registry.tsv 第 %d 行 optional_adapter 缺少依赖信息\n", NR) > "/dev/stderr"
+          printf("source-registry.tsv row %d optional_adapter missing dependency info\n", NR) > "/dev/stderr"
           failed = 1
         }
       } else if ($7 != "-" || $8 != "-" || $9 != "none") {
-        printf("source-registry.tsv 第 %d 行非外挂来源不应声明依赖\n", NR) > "/dev/stderr"
+        printf("source-registry.tsv row %d non-adapter source should not declare dependencies\n", NR) > "/dev/stderr"
         failed = 1
       }
     }
     END {
       if (!category_seen["core_builtin"]) {
-        print "source-registry.tsv 缺少 core_builtin 来源" > "/dev/stderr"
+        print "source-registry.tsv missing core_builtin source" > "/dev/stderr"
         failed = 1
       }
 
       if (!category_seen["optional_adapter"]) {
-        print "source-registry.tsv 缺少 optional_adapter 来源" > "/dev/stderr"
+        print "source-registry.tsv missing optional_adapter source" > "/dev/stderr"
         failed = 1
       }
 
       if (!category_seen["manual_only"]) {
-        print "source-registry.tsv 缺少 manual_only 来源" > "/dev/stderr"
+        print "source-registry.tsv missing manual_only source" > "/dev/stderr"
         failed = 1
       }
 

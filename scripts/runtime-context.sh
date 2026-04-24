@@ -1,5 +1,5 @@
 #!/bin/bash
-# 共享运行场景解析：供 install.sh 和 adapter-state.sh 复用
+# Shared runtime context resolution: reused by install.sh and adapter-state.sh
 
 resolve_platform_skill_root() {
   case "$1" in
@@ -20,7 +20,7 @@ resolve_platform_skill_root() {
       printf '%s\n' "$HOME/.hermes/skills"
       ;;
     *)
-      echo "不支持的平台：$1" >&2
+      echo "Unsupported platform: $1" >&2
       return 1
       ;;
   esac
@@ -70,7 +70,7 @@ resolve_optional_adapter_root() {
       printf '%s\n' "$(dirname "$bundle_root")"
       ;;
     *)
-      echo "未知运行模式：$layout_mode" >&2
+      echo "Unknown layout mode: $layout_mode" >&2
       return 1
       ;;
   esac

@@ -2,8 +2,8 @@
 sources: ["gpt-series-overview.pdf"]
 ---
 
-# 微调技术
+# Fine-tuning Techniques
 
-本主题涵盖模型微调相关技术。
+This topic covers model fine-tuning related techniques.
 
 - [[GPT]]

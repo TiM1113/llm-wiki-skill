@@ -1,11 +1,11 @@
-# 操作日志
+# Operation Log
 
-> 记录知识库的所有变更历史
+> Records all changes to this wiki
 
 ---
 
-## {{DATE}} — 初始化
+## {{DATE}} — Initialized
 
-- **操作**：创建知识库
-- **主题**：{{TOPIC}}
-- **状态**：完成
+- **Action**: Created wiki
+- **Topic**: {{TOPIC}}
+- **Status**: Done

@@ -1,11 +1,11 @@
 #!/bin/bash
-# llm-wiki 缓存脚本
+# llm-wiki cache script
 
 set -euo pipefail
 
 usage() {
   cat <<'EOF'
-用法：
+Usage:
   bash scripts/cache.sh check <file>
   bash scripts/cache.sh update <file> <source_page>
   bash scripts/cache.sh invalidate <file>
@@ -21,7 +21,7 @@ require_file() {
   }
 
   [ -f "$file_path" ] || {
-    echo "文件不存在：$file_path" >&2
+    echo "File not found: $file_path" >&2
     exit 1
   }
 }
@@ -126,7 +126,7 @@ cache_check() {
 
   require_file "$file_path"
   wiki_root="$(find_wiki_root "$file_path")" || {
-    echo "未找到知识库根目录：$file_path" >&2
+    echo "Wiki root not found: $file_path" >&2
     exit 1
   }
   cache_file="$(cache_file_path "$wiki_root")"
@@ -154,7 +154,7 @@ with open(cache_file, "r", encoding="utf-8") as fh:
 
 entry = data.get("entries", {}).get(relative_path)
 
-# 无 cache entry → 尝试自愈（exact filename stem match + source_path 验证）
+# No cache entry → attempt self-healing (exact filename stem match + source_path verification)
 if not entry:
     raw_stem = pathlib.Path(relative_path).stem
     sources_dir = os.path.join(wiki_root, "wiki", "sources")
@@ -163,7 +163,7 @@ if not entry:
             if pathlib.Path(f).stem == raw_stem and f.endswith(".md"):
                 source_page = os.path.join("wiki", "sources", f)
                 source_abs = os.path.join(wiki_root, source_page)
-                # 验证 source 页面的 source_path frontmatter 是否指向当前 raw 文件
+                # Verify that the source page source_path frontmatter points to the current raw file
                 source_path_match = False
                 try:
                     with open(source_abs, "r", encoding="utf-8") as sf:
@@ -177,17 +177,17 @@ if not entry:
                                 continue
                             if in_frontmatter and stripped.startswith("source_path:"):
                                 fm_value = stripped.split(":", 1)[1].strip()
-                                # 匹配相对路径的末尾部分
+                                # Match the trailing portion of the relative path
                                 if relative_path.endswith(fm_value) or fm_value.endswith(relative_path) or fm_value == relative_path:
                                     source_path_match = True
                                 break
                 except (OSError, UnicodeDecodeError):
                     pass
                 if not source_path_match:
-                    # stem 匹配但 source_path 不一致 → 不信任，需要验证
+                    # stem matches but source_path mismatch → untrusted, needs verification
                     print("MISS:repaired_needs_verify")
                     raise SystemExit(0)
-                # stem + source_path 都匹配 → 安全自愈
+                # stem + source_path both match → safe self-healing
                 timestamp = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
                 entries = data.setdefault("entries", {})
                 entries[relative_path] = {
@@ -235,7 +235,7 @@ cache_update() {
 
   require_file "$file_path"
   wiki_root="$(find_wiki_root "$file_path")" || {
-    echo "未找到知识库根目录：$file_path" >&2
+    echo "Wiki root not found: $file_path" >&2
     exit 1
   }
   cache_file="$(cache_file_path "$wiki_root")"
@@ -277,10 +277,10 @@ cache_invalidate() {
   local file_path="$1"
   local wiki_root cache_file relative_path_value
 
-  # 不调用 require_file：文件可能已被删除（级联删除场景）
-  # 直接通过路径查找缓存条目
+  # Do not call require_file: the file may have been deleted (cascade delete scenario)
+  # Look up cache entry directly by path
   wiki_root="$(find_wiki_root "$file_path")" || {
-    echo "未找到知识库根目录：$file_path" >&2
+    echo "Wiki root not found: $file_path" >&2
     exit 1
   }
   cache_file="$(cache_file_path "$wiki_root")"

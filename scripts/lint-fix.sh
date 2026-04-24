@@ -1,8 +1,8 @@
 #!/bin/bash
-# lint-fix.sh — 自动修复 lint 发现的低风险问题
-# 用法：bash scripts/lint-fix.sh <wiki_root> [--dry-run]
-# 修复范围：仅处理确定性修复（补 index 条目），不做高风险操作（删页面、改内容）
-# 退出码：0 = 完成，1 = 参数错误
+# lint-fix.sh — auto-fix low-risk issues found by lint
+# Usage: bash scripts/lint-fix.sh <wiki_root> [--dry-run]
+# Scope: only deterministic fixes (adding index entries), no high-risk operations (deleting pages, modifying content)
+# Exit code: 0 = done, 1 = argument error
 
 set -u
 shopt -s nullglob

@@ -12,7 +12,7 @@ const {
 function scanWiki(wikiRoot) {
   const wikiDir = path.join(wikiRoot, "wiki");
   if (!fs.existsSync(wikiDir)) {
-    console.error(`ERROR: wiki 目录不存在：${wikiDir}`);
+    console.error(`ERROR: wiki directory not found: ${wikiDir}`);
     process.exit(1);
   }
 

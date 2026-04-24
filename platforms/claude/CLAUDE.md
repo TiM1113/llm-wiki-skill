@@ -1,37 +1,37 @@
-# Claude Code 入口
+# Claude Code Entry Point
 
-这是 Claude Code 的薄入口文件。共享说明看 [../../README.md](../../README.md)，核心能力看 [../../SKILL.md](../../SKILL.md)。
+This is a thin entry file for Claude Code. See [../../README.md](../../README.md) for shared instructions, and [../../SKILL.md](../../SKILL.md) for core capabilities and workflows.
 
-## Claude 应该怎么装
+## How to Install for Claude
 
-优先执行：
+Run the following first:
 
 ```bash
 bash install.sh --platform claude
 ```
 
-如果你还需要网页 / X / 微信公众号 / YouTube / 知乎自动提取，再执行：
+If you also need automatic extraction for web pages / X / YouTube, run:
 
 ```bash
 bash install.sh --platform claude --with-optional-adapters
 ```
 
-如果你希望 Claude Code 在会话开始时自动感知当前知识库上下文，可以执行：
+If you want Claude Code to automatically detect the current wiki context at session start, run:
 
 ```bash
 bash install.sh --platform claude --install-hooks
 ```
 
-默认安装位置：`~/.claude/skills/llm-wiki`
+Default install location: `~/.claude/skills/llm-wiki`
 
-安装完成后，还会一并带上 `/llm-wiki-upgrade`。以后要更新核心主线，可以直接让 Claude 执行这个命令；如果还要刷新网页 / X / 微信公众号 / YouTube / 知乎自动提取能力，再继续执行带 `--with-optional-adapters` 的升级。
+After installation, `/llm-wiki-upgrade` is also included. To update the core mainline in the future, you can have Claude run this command directly. If you also want to refresh web / X / YouTube auto-extraction capabilities, run the upgrade with `--with-optional-adapters`.
 
-## 兼容入口
+## Legacy Entry
 
-老用户仍然可以继续执行：
+Existing users can still run:
 
 ```bash
 bash setup.sh
 ```
 
-它现在会走同一套安装流程，不再单独维护另一份逻辑。若需要自动提取 URL 类来源，再显式追加 `--with-optional-adapters`。
+It now follows the same installation flow and no longer maintains separate logic. If you need URL-based source auto-extraction, explicitly append `--with-optional-adapters`.

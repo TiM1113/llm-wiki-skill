@@ -1,78 +1,78 @@
 # CLAUDE.md
 
-先看这三个文件：
+Start with these three files:
 
-- [README.md](README.md)：多平台总说明
-- [platforms/claude/CLAUDE.md](platforms/claude/CLAUDE.md)：Claude 专属入口提示
-- [SKILL.md](SKILL.md)：核心能力和工作流
+- [README.md](README.md): Multi-platform overview
+- [platforms/claude/CLAUDE.md](platforms/claude/CLAUDE.md): Claude-specific entry point
+- [SKILL.md](SKILL.md): Core capabilities and workflows
 
-## Claude 安装动作
+## Claude Installation
 
-如果当前任务是安装这个 skill，优先执行：
+If the current task is to install this skill, run first:
 
 ```bash
 bash install.sh --platform claude
 ```
 
-> `setup.sh` 是 `install.sh --platform claude` 的兼容包装，老用户可以继续用。
+> `setup.sh` is a compatibility wrapper for `install.sh --platform claude`; existing users can continue using it.
 
-默认只准备知识库核心主线。如果这次要自动提取网页 / X / 微信公众号 / YouTube / 知乎，再执行：
+By default, only the core wiki mainline is prepared. If you also need automatic extraction for web pages / X / WeChat Official Accounts / YouTube / Zhihu, run:
 
 ```bash
 bash install.sh --platform claude --with-optional-adapters
 ```
 
-安装完成后，还会一并带上 `/llm-wiki-upgrade`。以后要更新核心主线，可以直接让 Claude 执行这个命令。
+After installation, `/llm-wiki-upgrade` is also included. To update the core mainline in the future, you can have Claude run this command directly.
 
-## 分支管理规则
+## Branch Management Rules
 
-改动代码（非纯文档/注释）时，按以下流程操作：
+When making code changes (not purely documentation/comments), follow this workflow:
 
-1. 开新分支：从 main 创建，命名用 feat/ 或 fix/ 前缀（如 fix/cache-reliability-write-through）
-2. 分步 commit：每完成一个逻辑单元就提交（脚本实现 → 测试 → 文档更新，分开 commit）
-3. 推送并创建 PR：推到远端后用 `gh pr create` 创建 PR
-4. 合并：确认测试通过后在 GitHub 上合并
+1. Create a new branch: branch from main, use feat/ or fix/ prefix (e.g., fix/cache-reliability-write-through)
+2. Commit incrementally: commit after each logical unit (script implementation -> tests -> documentation update, as separate commits)
+3. Push and create PR: push to remote, then use `gh pr create` to create a PR
+4. Merge: merge on GitHub after confirming tests pass
 
-不需要开分支的情况：
-- 只改了 CLAUDE.md、文档、注释
-- 只是探索性阅读代码
+No branch needed when:
+- Only changing CLAUDE.md, documentation, or comments
+- Only exploratory code reading
 
-设计文档或 plan 写完准备动手改代码时，也先开分支再开始实现。
+When a design document or plan is ready and you're about to start coding, create a branch first before implementing.
 
-## 已记录的解决方案
+## Recorded Solutions
 
-`docs/solutions/` 存放过去解决问题的文档（bug、最佳实践、工作流改进），按类别分目录，每份有 YAML frontmatter（`module`、`tags`、`problem_type`）。涉及已记录领域时（graph、cache、install、lint 等），先搜一下有没有现成经验。
+`docs/solutions/` stores documents about past problem resolutions (bugs, best practices, workflow improvements), organized by category subdirectories, each with YAML frontmatter (`module`, `tags`, `problem_type`). When working in documented areas (graph, cache, install, lint, etc.), search for existing experience first.
 
-## 推送前测试规则
+## Pre-Push Testing Rules
 
-每次 `git push` 前必须验证，按改动范围选深度：
+Before every `git push`, verification is required. Choose depth based on the scope of changes:
 
-### 第一层：快速检查（Claude Code 直接跑，1 分钟内）
+### Tier 1: Quick checks (Claude Code runs directly, under 1 minute)
 
-不管改了什么都跑这 3 项：
+Always run these 3 checks regardless of what changed:
 
-1. `bash install.sh --dry-run --platform codex` — 安装脚本不报错
-2. 改过的脚本如果有 `tests/fixtures/`，跑一下 diff 预期输出
-3. `grep -r '/Users/kangjiaqi\|康佳琦' scripts/ templates/ tests/ SKILL.md` — 没泄露隐私路径
+1. `bash install.sh --dry-run --platform codex` — install script runs without errors
+2. If modified scripts have `tests/fixtures/`, run diff against expected output
+3. `grep -r '/Users/kangjiaqi\|康佳琦' scripts/ templates/ tests/ SKILL.md` — no leaked private paths
 
-### 第二/三层：工作流测试（你在 codex 终端手动跑）
+### Tier 2/3: Workflow tests (run manually in codex terminal)
 
-- **第二层**（只改了 SKILL.md 里个别工作流）：Claude Code 生成测试提示词写到文件，告诉你路径，你复制到 codex 跑涉及的工作流
-- **第三层**（多工作流改动 / 版本号升级）：Claude Code 生成全量回归提示词，你在 codex 跑完整流程（init → ingest → lint → digest → graph）
+- **Tier 2** (only changed individual workflows in SKILL.md): Claude Code generates test prompts and writes them to a file, tells you the path, and you copy them to codex to run the affected workflows
+- **Tier 3** (multi-workflow changes / version bumps): Claude Code generates full regression prompts, and you run the complete flow in codex (init -> ingest -> lint -> digest -> graph)
 
-素材复用 `~/Desktop/llm-wiki-cowork-test/raw-input/` 里的 3 篇文章，不用每次重新找。
+Reuse the 3 articles in `~/Desktop/llm-wiki-cowork-test/raw-input/` as test material, no need to find new ones each time.
 
-codex 跑完后把 `test-report.md` 发回来，Claude Code 确认无阻塞问题后才执行 `git push`。
+After codex completes, send back the `test-report.md`. Claude Code confirms no blocking issues before running `git push`.
 
-## 推送前文档更新规则
+## Pre-Push Documentation Update Rules
 
-每次 commit 含功能改动（feat/fix）后、`git push` 前，**必须**主动检查并更新以下文档，不需要用户提醒：
+After every commit containing feature changes (feat/fix), before `git push`, you **must** proactively check and update the following documents without waiting for user reminders:
 
-1. **CHANGELOG.md**：在顶部加新版本条目（日期、新增/改进/修复分类）
-2. **README.md 功能列表**：新增功能或行为变化时，在"功能"章节补一条
-3. **版本号**：如果改动涉及新功能，在 CHANGELOG 条目里用新版本号（按 v当前+1 递增）
+1. **CHANGELOG.md**: Add a new version entry at the top (date, categorized by Added/Improved/Fixed)
+2. **README.md feature list**: When adding new features or behavior changes, add an entry in the "Features" section
+3. **Version number**: If changes involve new features, use a new version number in the CHANGELOG entry (increment from current version)
 
-跳过条件：纯文档/排版/注释改动不需要更新。
+Skip condition: Pure documentation/formatting/comment changes do not require updates.
 
 ## Skill routing
 

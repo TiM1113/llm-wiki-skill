@@ -1,6 +1,6 @@
-# 已废弃：请使用 bash install.sh --platform claude
+# Deprecated: please use bash install.sh --platform claude
 #!/bin/bash
-# Claude 旧入口兼容包装
+# Claude legacy entry point compatibility wrapper
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

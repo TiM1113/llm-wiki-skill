@@ -1,4 +1,4 @@
 # Lonely
 
-这是一个孤立页面。没有任何其他页面引用它，index.md 里也没有列出它。
-脚本应该把它报告为"孤立"。
+This is an orphan page. No other pages reference it, and it is not listed in index.md.
+The script should report it as "orphan".

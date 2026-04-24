@@ -1,41 +1,42 @@
 #!/bin/bash
-# 验证 ingest Step 1 的 JSON 输出格式
-# 用法：bash validate-step1.sh <json_file>
-# 返回：0 = 格式正确，1 = 格式有问题（触发回退）
+# Validate ingest Step 1 JSON output format
+# Usage: bash validate-step1.sh <json_file>
+# Returns: 0 = format correct, 1 = format issues (triggers rollback)
 
 JSON_FILE="$1"
 
-# 参数检查
+# Parameter check
 [ -z "$1" ] && { echo "ERROR: usage: validate-step1.sh <json_file>"; exit 1; }
 
-# 检查 jq 是否可用（必需依赖）
+# Check if jq is available (required dependency)
 command -v jq >/dev/null 2>&1 || { echo "ERROR: jq not found. Run: brew install jq"; exit 1; }
 
-# 检查文件是否存在
+# Check if file exists
 [ -f "$JSON_FILE" ] || { echo "ERROR: file not found: $JSON_FILE"; exit 1; }
 
-# 检查是否是有效 JSON
+# Check if valid JSON
 jq empty "$JSON_FILE" 2>/dev/null || { echo "ERROR: invalid JSON format"; exit 1; }
 
-# 检查必需字段存在且类型正确
+# Check required fields exist and have correct types
 jq -e '.entities | type == "array"' "$JSON_FILE" >/dev/null 2>&1 || { echo "ERROR: 'entities' must be an array"; exit 1; }
 jq -e '.topics | type == "array"' "$JSON_FILE" >/dev/null 2>&1 || { echo "ERROR: 'topics' must be an array"; exit 1; }
 jq -e '.connections | type == "array"' "$JSON_FILE" >/dev/null 2>&1 || { echo "ERROR: 'connections' must be an array"; exit 1; }
 jq -e '.contradictions | type == "array"' "$JSON_FILE" >/dev/null 2>&1 || { echo "ERROR: 'contradictions' must be an array"; exit 1; }
 jq -e '.new_vs_existing | type == "object"' "$JSON_FILE" >/dev/null 2>&1 || { echo "ERROR: 'new_vs_existing' must be an object"; exit 1; }
 
-# 检查每个 entity 的必需子字段
+# Check required sub-fields of each entity
 VALID_CONFIDENCE="EXTRACTED|INFERRED|AMBIGUOUS|UNVERIFIED"
 
 ENTITY_COUNT=$(jq '.entities | length' "$JSON_FILE" 2>/dev/null)
 if [ "$ENTITY_COUNT" -gt 0 ] 2>/dev/null; then
-    NON_OBJECT_ENTITY_COUNT=$(jq '[.entities[] | select(type != "object")] | length' "$JSON_FILE" 2>/dev/null)
-    if [ "$NON_OBJECT_ENTITY_COUNT" -gt 0 ] 2>/dev/null; then
-        echo "ERROR: $NON_OBJECT_ENTITY_COUNT entity/entities must be objects"
+    # All entity items must be objects
+    NON_OBJECT=$(jq '[.entities[] | select(type != "object")] | length' "$JSON_FILE" 2>/dev/null)
+    if [ "$NON_OBJECT" -gt 0 ] 2>/dev/null; then
+        echo "ERROR: $NON_OBJECT entity/entities are not JSON objects"
         exit 1
     fi
 
-    # name, type, confidence 必须存在且非空
+    # name, type, confidence must exist and be non-empty
     BAD_ENTITY_COUNT=$(jq '
         [.entities[] | select(
             (.name // "" | length) == 0 or
@@ -48,7 +49,7 @@ if [ "$ENTITY_COUNT" -gt 0 ] 2>/dev/null; then
         exit 1
     fi
 
-    # confidence 值必须是四个有效值之一
+    # confidence value must be one of four valid values
     INVALID=$(jq -r '.entities[]? | (.confidence // "MISSING")' "$JSON_FILE" 2>/dev/null | \
         grep -v -E "^($VALID_CONFIDENCE)$" | head -3)
     if [ -n "$INVALID" ]; then
@@ -57,7 +58,7 @@ if [ "$ENTITY_COUNT" -gt 0 ] 2>/dev/null; then
         exit 1
     fi
 
-    # EXTRACTED 和 INFERRED 必须提供 evidence 字段
+    # EXTRACTED and INFERRED must provide the evidence field
     NO_EVIDENCE_COUNT=$(jq '
         [.entities[] | select(
             (.confidence == "EXTRACTED" or .confidence == "INFERRED") and
@@ -69,12 +70,12 @@ if [ "$ENTITY_COUNT" -gt 0 ] 2>/dev/null; then
     fi
 fi
 
-# 检查每个 topic 的必需子字段
+# Check required sub-fields of each topic
 TOPIC_COUNT=$(jq '.topics | length' "$JSON_FILE" 2>/dev/null)
 if [ "$TOPIC_COUNT" -gt 0 ] 2>/dev/null; then
-    NON_OBJECT_TOPIC_COUNT=$(jq '[.topics[] | select(type != "object")] | length' "$JSON_FILE" 2>/dev/null)
-    if [ "$NON_OBJECT_TOPIC_COUNT" -gt 0 ] 2>/dev/null; then
-        echo "ERROR: $NON_OBJECT_TOPIC_COUNT topic(s) must be objects"
+    NON_OBJECT=$(jq '[.topics[] | select(type != "object")] | length' "$JSON_FILE" 2>/dev/null)
+    if [ "$NON_OBJECT" -gt 0 ] 2>/dev/null; then
+        echo "ERROR: $NON_OBJECT topic(s) are not JSON objects"
         exit 1
     fi
 
@@ -89,12 +90,12 @@ if [ "$TOPIC_COUNT" -gt 0 ] 2>/dev/null; then
     fi
 fi
 
-# 检查每个 connection 的必需子字段（from, to, confidence）
+# Check required sub-fields of each connection (from, to, confidence)
 CONN_COUNT=$(jq '.connections | length' "$JSON_FILE" 2>/dev/null)
 if [ "$CONN_COUNT" -gt 0 ] 2>/dev/null; then
-    NON_OBJECT_CONN_COUNT=$(jq '[.connections[] | select(type != "object")] | length' "$JSON_FILE" 2>/dev/null)
-    if [ "$NON_OBJECT_CONN_COUNT" -gt 0 ] 2>/dev/null; then
-        echo "ERROR: $NON_OBJECT_CONN_COUNT connection(s) must be objects"
+    NON_OBJECT=$(jq '[.connections[] | select(type != "object")] | length' "$JSON_FILE" 2>/dev/null)
+    if [ "$NON_OBJECT" -gt 0 ] 2>/dev/null; then
+        echo "ERROR: $NON_OBJECT connection(s) are not JSON objects"
         exit 1
     fi
 
@@ -118,7 +119,7 @@ if [ "$CONN_COUNT" -gt 0 ] 2>/dev/null; then
         exit 1
     fi
 
-    # EXTRACTED 和 INFERRED connections 必须提供 evidence
+    # EXTRACTED and INFERRED connections must provide evidence
     NO_CONN_EVIDENCE=$(jq '
         [.connections[] | select(
             (.confidence == "EXTRACTED" or .confidence == "INFERRED") and

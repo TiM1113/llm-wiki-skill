@@ -1,25 +1,25 @@
-# {{TOPIC}} 结晶化
+# {{TOPIC}} Synthesis
 
-日期：{{DATE}}
-来源：对话/工作会话
-置信度：INFERRED
+Date: {{DATE}}
+Source: conversation / work session
+Confidence: INFERRED
 
-## 核心洞见
+## Core Insights
 
-<!-- 3-5 条关键洞见，每条一行 -->
+<!-- 3-5 key insights, one per line -->
 
-## 关键决策
+## Key Decisions
 
-<!-- 做了什么决定，为什么这么决定 -->
+<!-- What was decided, and the reasoning behind each decision -->
 
-## 涉及概念
+## Concepts Involved
 
-<!-- 列出本次会话涉及的重要概念，每个用 [[概念名]] 格式链接 -->
+<!-- List important concepts from this session, each linked with [[Concept Name]] format -->
 
-## 参考资料
+## References
 
-<!-- 对话中提到的文章、工具、项目 -->
+<!-- Articles, tools, projects mentioned during the conversation -->
 
-## 待跟进
+## Follow-ups
 
-<!-- 还没解决的问题，或者下一步要验证的假设 -->
+<!-- Unresolved questions, or hypotheses to verify next -->

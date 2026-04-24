@@ -1,6 +1,6 @@
 #!/bin/bash
-# 旧知识库兼容脚本：惰性默认、目录检查、按需创建
-# 原则：migration_required=no，只有确实无法兼容时才引入显式迁移
+# Legacy wiki compatibility script: lazy defaults, directory checks, on-demand creation
+# Principle: migration_required=no, only introduce explicit migration when truly incompatible
 
 set -euo pipefail
 
@@ -10,7 +10,6 @@ SOURCE_REGISTRY_SCRIPT="$SCRIPT_DIR/source-registry.sh"
 LEGACY_REQUIRED_RAW_DIRS=(
   "raw/articles"
   "raw/tweets"
-  "raw/wechat"
   "raw/pdfs"
   "raw/notes"
   "raw/assets"
@@ -32,7 +31,7 @@ REQUIRED_PATHS=(
 
 usage() {
   cat <<'EOF'
-用法：
+Usage:
   bash scripts/wiki-compat.sh inspect <wiki_root>
   bash scripts/wiki-compat.sh validate <wiki_root>
   bash scripts/wiki-compat.sh ensure-source-dir <wiki_root> <source_id>
@@ -52,7 +51,7 @@ require_wiki_root() {
   }
 
   [ -d "$wiki_root" ] || {
-    echo "知识库不存在：$wiki_root" >&2
+    echo "Wiki not found: $wiki_root" >&2
     exit 1
   }
 }
@@ -114,7 +113,7 @@ resolved_schema_version() {
 
 is_legacy_required_raw_dir() {
   case "$1" in
-    raw/articles|raw/tweets|raw/wechat|raw/pdfs|raw/notes|raw/assets)
+    raw/articles|raw/tweets|raw/pdfs|raw/notes|raw/assets)
       return 0
       ;;
     *)
@@ -170,14 +169,14 @@ validate_layout() {
 
   for path in "${REQUIRED_PATHS[@]}"; do
     if [ ! -e "$wiki_root/$path" ]; then
-      echo "缺少必要路径：$path" >&2
+      echo "Missing required path: $path" >&2
       failed=1
     fi
   done
 
   for path in "${LEGACY_REQUIRED_RAW_DIRS[@]}"; do
     if [ ! -d "$wiki_root/$path" ]; then
-      echo "缺少必要旧目录：$path" >&2
+      echo "Missing required legacy directory: $path" >&2
       failed=1
     fi
   done
@@ -194,7 +193,7 @@ source_raw_dir() {
   record="$(
     bash "$SOURCE_REGISTRY_SCRIPT" get "$source_id" 2>/dev/null
   )" || {
-    echo "未知来源：$source_id" >&2
+    echo "Unknown source: $source_id" >&2
     exit 1
   }
 

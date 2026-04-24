@@ -15,11 +15,11 @@ UNINSTALL_HOOKS=0
 UPGRADE=0
 WITH_OPTIONAL_ADAPTERS=0
 
-# 这些项目都在运行时会被读取或链接：
-# - 入口与说明文件：README / CLAUDE / AGENTS / CHANGELOG
-# - 安装入口：install.sh / setup.sh
-# - 实际执行内容：SKILL.md / scripts / templates / deps
-# - 平台薄入口：platforms（README、CLAUDE、AGENTS 都会引用）
+# These items are read or linked at runtime:
+# - Entry and description files: README / CLAUDE / AGENTS / CHANGELOG
+# - Install entry points: install.sh / setup.sh
+# - Actual execution content: SKILL.md / scripts / templates / deps
+# - Platform thin entry points: platforms (referenced by README, CLAUDE, AGENTS)
 MANAGED_ITEMS=(
   "SKILL.md"
   "README.md"
@@ -45,18 +45,17 @@ list_companion_skill_sources() {
   esac
 }
 
-# 微信工具 URL 从共享配置读取，与 adapter-state.sh 保持一致
 source "$SCRIPT_DIR/scripts/shared-config.sh"
 source "$SCRIPT_DIR/scripts/runtime-context.sh"
 
-info()  { printf '\033[36m[信息]\033[0m %s\n' "$1"; }
-ok()    { printf '\033[32m[完成]\033[0m %s\n' "$1"; }
-warn()  { printf '\033[33m[警告]\033[0m %s\n' "$1"; }
-err()   { printf '\033[31m[错误]\033[0m %s\n' "$1" >&2; }
+info()  { printf '\033[36m[Info]\033[0m %s\n' "$1"; }
+ok()    { printf '\033[32m[Done]\033[0m %s\n' "$1"; }
+warn()  { printf '\033[33m[Warn]\033[0m %s\n' "$1"; }
+err()   { printf '\033[31m[Error]\033[0m %s\n' "$1" >&2; }
 
 usage() {
   cat <<'EOF'
-用法：
+Usage:
   bash install.sh --platform <claude|codex|openclaw|hermes|auto> [--dry-run]
   bash install.sh --platform claude --install-hooks
   bash install.sh --install-hooks
@@ -64,15 +63,15 @@ usage() {
   bash install.sh --upgrade [--platform <claude|codex|openclaw|hermes|auto>]
   bash install.sh --platform codex --with-optional-adapters
 
-选项：
-  --platform         目标平台。默认 auto；只有检测到唯一平台时才会自动安装。
-  --dry-run          只打印安装计划，不写入文件。
-  --target-dir       指定技能目标目录（直接传最终的 llm-wiki 目录）。
-  --with-optional-adapters  显式启用网页 / X / YouTube / 公众号等可选提取器安装。
-  --install-hooks    注册 Claude Code 的 SessionStart hook。
-  --uninstall-hooks  移除 Claude Code 的 SessionStart hook。
-  --upgrade          拉取最新代码并更新已安装的 llm-wiki（保留 hook 配置）。
-  -h, --help         显示帮助。
+Options:
+  --platform         Target platform. Defaults to auto; only auto-installs when exactly one platform is detected.
+  --dry-run          Only print the install plan, do not write files.
+  --target-dir       Specify the skill target directory (pass the final llm-wiki directory directly).
+  --with-optional-adapters  Explicitly enable installation of optional extractors (web / X / YouTube).
+  --install-hooks    Register the Claude Code SessionStart hook.
+  --uninstall-hooks  Remove the Claude Code SessionStart hook.
+  --upgrade          Pull latest code and update the installed llm-wiki (preserves hook configuration).
+  -h, --help         Show help.
 EOF
 }
 
@@ -82,7 +81,7 @@ hook_command_for_skill_dir() {
 
 require_jq() {
   if ! command -v jq >/dev/null 2>&1; then
-    err "注册或移除 hook 需要 jq"
+    err "jq is required to register or remove hooks"
     exit 1
   fi
 }
@@ -92,7 +91,7 @@ register_claude_session_hook() {
   local settings_dir settings_path backup_path hook_command tmp_file
 
   [ -d "$skill_dir" ] || {
-    err "未找到已安装的 llm-wiki：$skill_dir"
+    err "Installed llm-wiki not found: $skill_dir"
     exit 1
   }
 
@@ -113,7 +112,7 @@ register_claude_session_hook() {
   cp "$settings_path" "$backup_path"
 
   if jq -e --arg cmd "$hook_command" '[ (.hooks.SessionStart // [])[]? | (.hooks // [])[]? | .command ] | index($cmd) != null' "$settings_path" > /dev/null; then
-    ok "Claude Code SessionStart hook 已存在，跳过"
+    ok "Claude Code SessionStart hook already exists, skipping"
     return 0
   fi
 
@@ -124,7 +123,7 @@ register_claude_session_hook() {
   ' "$settings_path" > "$tmp_file"
   mv "$tmp_file" "$settings_path"
 
-  ok "Claude Code SessionStart hook 已注册"
+  ok "Claude Code SessionStart hook registered"
 }
 
 uninstall_claude_session_hook() {
@@ -143,7 +142,7 @@ uninstall_claude_session_hook() {
       printf '[dry-run] uninstall SessionStart hook: %s\n' "$hook_command"
       return 0
     fi
-    ok "未找到 Claude Code settings.json，跳过 hook 移除"
+    ok "Claude Code settings.json not found, skipping hook removal"
     return 0
   fi
 
@@ -167,7 +166,7 @@ uninstall_claude_session_hook() {
   ' "$settings_path" > "$tmp_file"
   mv "$tmp_file" "$settings_path"
 
-  ok "Claude Code SessionStart hook 已移除"
+  ok "Claude Code SessionStart hook removed"
 }
 
 load_dependency_skills() {
@@ -188,7 +187,7 @@ join_source_labels() {
       BEGIN { separator = "" }
       NF {
         printf "%s%s", separator, $2
-        separator = "、"
+        separator = ", "
       }
       END {
         if (separator == "") {
@@ -251,12 +250,12 @@ install_dependency_skills() {
     dep_target="$skill_root/$dep"
 
     if [ ! -d "$dep_source" ]; then
-      warn "$dep：deps/ 中未找到源文件，跳过"
+      warn "$dep: source not found in deps/, skipping"
       continue
     fi
 
     copy_item "$dep_source" "$dep_target"
-    ok "$dep 已准备到 $dep_target"
+    ok "$dep prepared at $dep_target"
   done
 }
 
@@ -273,12 +272,12 @@ install_companion_skills() {
     skill_target="$skill_root/$skill_name"
 
     if [ ! -d "$skill_source" ]; then
-      warn "$skill_name：仓库中未找到源文件，跳过"
+      warn "$skill_name: source not found in repository, skipping"
       continue
     fi
 
     copy_item "$skill_source" "$skill_target"
-    ok "$skill_name 已安装到 $skill_target"
+    ok "$skill_name installed at $skill_target"
   done < <(list_companion_skill_sources "$platform")
 }
 
@@ -291,7 +290,7 @@ install_bundle() {
     target_path="$target_dir/$item"
 
     if [ ! -e "$source_path" ]; then
-      warn "$item：安装源文件缺失，跳过"
+      warn "$item: install source file missing, skipping"
       continue
     fi
 
@@ -312,11 +311,11 @@ install_node_deps() {
   fi
 
   if [ -d "$baoyu_dir/node_modules" ]; then
-    ok "baoyu-url-to-markdown 的 Node 依赖已存在"
+    ok "Node dependencies for baoyu-url-to-markdown already exist"
     return 0
   fi
 
-  info "安装 baoyu-url-to-markdown 的 Node 依赖..."
+  info "Installing Node dependencies for baoyu-url-to-markdown..."
 
   if [ "$DRY_RUN" -eq 1 ]; then
     if command -v bun >/dev/null 2>&1; then
@@ -324,49 +323,22 @@ install_node_deps() {
     elif command -v npm >/dev/null 2>&1; then
       printf '[dry-run] (cd %s && npm install)\n' "$baoyu_dir"
     else
-      printf '[dry-run] 未找到 bun 或 npm，无法安装 Node 依赖\n'
+      printf '[dry-run] Neither bun nor npm found, cannot install Node dependencies\n'
     fi
     return 0
   fi
 
   if command -v bun >/dev/null 2>&1; then
-    (cd "$baoyu_dir" && bun install) || warn "bun install 失败，跳过（可手动粘贴文本作为替代）"
+    (cd "$baoyu_dir" && bun install) || warn "bun install failed, skipping (you can manually paste text as an alternative)"
   elif command -v npm >/dev/null 2>&1; then
-    (cd "$baoyu_dir" && npm install) || warn "npm install 失败，跳过（可手动粘贴文本作为替代）"
+    (cd "$baoyu_dir" && npm install) || warn "npm install failed, skipping (you can manually paste text as an alternative)"
   else
-    warn "未找到 bun 或 npm，无法安装 Node 依赖"
-    echo "  推荐安装 bun：curl -fsSL https://bun.sh/install | bash"
+    warn "Neither bun nor npm found, cannot install Node dependencies"
+    echo "  Recommended: install bun via: curl -fsSL https://bun.sh/install | bash"
     return 0
   fi
 
-  [ -d "$baoyu_dir/node_modules" ] && ok "baoyu-url-to-markdown 的 Node 依赖安装完成"
-}
-
-install_uv_tools() {
-  if ! command -v uv >/dev/null 2>&1; then
-    warn "未找到 uv，跳过 wechat-article-to-markdown 安装"
-    echo "  安装 uv：curl -LsSf https://astral.sh/uv/install.sh | sh"
-    return 0
-  fi
-
-  if command -v wechat-article-to-markdown >/dev/null 2>&1; then
-    ok "wechat-article-to-markdown 已安装"
-    return 0
-  fi
-
-  info "安装 wechat-article-to-markdown..."
-
-  if [ "$DRY_RUN" -eq 1 ]; then
-    printf '[dry-run] uv tool install %s\n' "${WECHAT_TOOL_URL}"
-    return 0
-  fi
-
-  uv tool install "${WECHAT_TOOL_URL}" \
-    || warn "wechat-article-to-markdown 安装失败（可手动安装：uv tool install ${WECHAT_TOOL_URL}）"
-
-  if command -v wechat-article-to-markdown >/dev/null 2>&1; then
-    ok "wechat-article-to-markdown 安装完成"
-  fi
+  [ -d "$baoyu_dir/node_modules" ] && ok "Node dependencies for baoyu-url-to-markdown installed"
 }
 
 bootstrap_optional_adapters() {
@@ -379,39 +351,31 @@ bootstrap_optional_adapters() {
   load_dependency_skills
   install_dependency_skills "$skill_root"
   install_node_deps "$skill_root"
-  install_uv_tools
 }
 
 check_environment() {
   echo ""
   echo "================================"
-  echo "  环境检查"
+  echo "  Environment Check"
   echo "================================"
   echo ""
 
   if command -v uv >/dev/null 2>&1; then
-    ok "uv 已安装（可安装 wechat-article-to-markdown，并运行 youtube-transcript）"
+    ok "uv is installed (can run youtube-transcript)"
   else
-    warn "未找到 uv。wechat-article-to-markdown 和 youtube-transcript 需要 uv"
-    echo "  可用 Homebrew 安装：brew install uv"
-  fi
-
-  if command -v wechat-article-to-markdown >/dev/null 2>&1; then
-    ok "wechat-article-to-markdown 已可用"
-  else
-    warn "未找到 wechat-article-to-markdown。无法自动提取微信公众号"
-    echo "  可手动安装：uv tool install ${WECHAT_TOOL_URL}"
+    warn "uv not found. youtube-transcript requires uv"
+    echo "  Install via Homebrew: brew install uv"
   fi
 
   if command -v lsof >/dev/null 2>&1 && lsof -i :9222 -sTCP:LISTEN >/dev/null 2>&1; then
-    ok "Chrome 调试端口 9222 已监听（可复用已登录会话）"
+    ok "Chrome debug port 9222 is listening (can reuse existing session)"
   else
-    info "未检测到 Chrome 调试端口 9222。baoyu-url-to-markdown 仍可自动拉起临时浏览器"
-    echo "  如需复用已登录会话，再执行：open -na \"Google Chrome\" --args --remote-debugging-port=9222"
+    info "Chrome debug port 9222 not detected. baoyu-url-to-markdown can still launch a temporary browser automatically"
+    echo "  To reuse an existing session, run: open -na \"Google Chrome\" --args --remote-debugging-port=9222"
   fi
 
   echo ""
-  echo "提示：即使部分外挂不可用，PDF / 本地文件 / 纯文本仍可直接进入主线。"
+  echo "Note: Even if some adapters are unavailable, PDF / local files / plain text can still enter the pipeline directly."
 }
 
 print_source_boundary() {
@@ -423,12 +387,12 @@ print_source_boundary() {
 
   echo ""
   echo "================================"
-  echo "  来源边界"
+  echo "  Source Boundary"
   echo "================================"
   echo ""
-  echo "核心主线：$core_sources"
-  echo "可选外挂：$optional_sources"
-  echo "手动入口：$manual_sources"
+  echo "Core pipeline: $core_sources"
+  echo "Optional adapters: $optional_sources"
+  echo "Manual entry: $manual_sources"
 }
 
 print_adapter_states() {
@@ -436,14 +400,14 @@ print_adapter_states() {
 
   echo ""
   echo "================================"
-  echo "  外挂状态"
+  echo "  Adapter Status"
   echo "================================"
   echo ""
 
   output="$(
     bash "$ADAPTER_STATE_SCRIPT" --skill-root "$SKILL_ROOT" --layout-mode installed_skill summary-human 2>&1
   )" || {
-    warn "无法生成外挂状态摘要"
+    warn "Unable to generate adapter status summary"
     printf '%s\n' "$output"
     return 0
   }
@@ -465,8 +429,8 @@ print_optional_adapter_hint() {
   command="$command --with-optional-adapters"
 
   echo ""
-  echo "提示：当前只准备了知识库核心主线。"
-  echo "如需网页 / X / 微信公众号 / YouTube / 知乎自动提取，再运行："
+  echo "Note: Only the core wiki pipeline has been set up."
+  echo "To enable auto-extraction for web / X / YouTube, run:"
   echo "  $command"
 }
 
@@ -478,13 +442,13 @@ print_claude_upgrade_hint() {
   fi
 
   echo ""
-  echo "提示：Claude Code 安装完成后，还可以直接用 /llm-wiki-upgrade 更新核心主线。"
+  echo "Note: After Claude Code installation, you can also use /llm-wiki-upgrade to update the core pipeline."
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --platform)
-      [ $# -ge 2 ] || { err "--platform 需要一个值"; usage; exit 1; }
+      [ $# -ge 2 ] || { err "--platform requires a value"; usage; exit 1; }
       PLATFORM="$2"
       PLATFORM_EXPLICIT=1
       shift 2
@@ -494,7 +458,7 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     --target-dir)
-      [ $# -ge 2 ] || { err "--target-dir 需要一个值"; usage; exit 1; }
+      [ $# -ge 2 ] || { err "--target-dir requires a value"; usage; exit 1; }
       TARGET_DIR="$2"
       shift 2
       ;;
@@ -519,7 +483,7 @@ while [ $# -gt 0 ]; do
       exit 0
       ;;
     *)
-      err "未知参数：$1"
+      err "Unknown argument: $1"
       usage
       exit 1
       ;;
@@ -527,13 +491,13 @@ while [ $# -gt 0 ]; do
 done
 
 if [ "$INSTALL_HOOKS" -eq 1 ] && [ "$UNINSTALL_HOOKS" -eq 1 ]; then
-  err "--install-hooks 和 --uninstall-hooks 不能同时使用"
+  err "--install-hooks and --uninstall-hooks cannot be used together"
   exit 1
 fi
 
 if [ "$UPGRADE" -eq 1 ]; then
   if [ -n "$TARGET_DIR" ] && [ "$PLATFORM" = "auto" ]; then
-    err "自定义目标目录升级时请显式传入 --platform"
+    err "When upgrading with a custom target directory, please explicitly pass --platform"
     exit 1
   fi
 
@@ -545,12 +509,12 @@ if [ "$UPGRADE" -eq 1 ]; then
     done
 
     if [ "${#detected_platforms[@]}" -eq 0 ]; then
-      err "没有检测到已安装的 llm-wiki，请先运行安装"
+      err "No installed llm-wiki detected, please run the installer first"
       exit 1
     fi
 
     if [ "${#detected_platforms[@]}" -gt 1 ]; then
-      err "检测到多个已安装平台：${detected_platforms[*]}。升级时请显式传入 --platform"
+      err "Multiple installed platforms detected: ${detected_platforms[*]}. Please explicitly pass --platform for upgrade"
       exit 1
     fi
 
@@ -562,23 +526,23 @@ if [ "$UPGRADE" -eq 1 ]; then
 
   echo ""
   echo "================================"
-  echo "  llm-wiki 升级"
+  echo "  llm-wiki Upgrade"
   echo "================================"
   echo ""
 
   if [ -d "$SCRIPT_DIR/.git" ]; then
-    info "从远程拉取最新代码..."
+    info "Pulling latest code from remote..."
     if [ "$DRY_RUN" -eq 1 ]; then
       printf '[dry-run] git -C %s pull\n' "$SCRIPT_DIR"
     else
       git -C "$SCRIPT_DIR" pull || {
-        err "git pull 失败，请检查网络或手动拉取后重试"
+        err "git pull failed, please check your network or pull manually and retry"
         exit 1
       }
     fi
-    ok "代码已拉取到最新"
+    ok "Code pulled to latest"
   else
-    warn "当前目录不是 git 仓库，跳过 git pull"
+    warn "Current directory is not a git repository, skipping git pull"
   fi
 
   upgrade_failures=0
@@ -593,11 +557,11 @@ if [ "$UPGRADE" -eq 1 ]; then
     fi
 
     echo ""
-    info "更新 $upgrade_platform 的 llm-wiki..."
-    echo "  目标目录：$upgrade_target"
+    info "Updating llm-wiki for $upgrade_platform..."
+    echo "  Target directory: $upgrade_target"
 
     if [ ! -d "$upgrade_target" ]; then
-      err "$upgrade_platform 尚未安装 llm-wiki：$upgrade_target"
+      err "llm-wiki not yet installed for $upgrade_platform: $upgrade_target"
       upgrade_failures=$((upgrade_failures + 1))
       continue
     fi
@@ -606,12 +570,12 @@ if [ "$UPGRADE" -eq 1 ]; then
     install_bundle "$upgrade_target"
     install_companion_skills "$upgrade_platform" "$upgrade_root"
     bootstrap_optional_adapters "$upgrade_root"
-    ok "$upgrade_platform 的 llm-wiki 已更新"
+    ok "llm-wiki for $upgrade_platform has been updated"
   done
 
   if [ "$upgrade_failures" -gt 0 ]; then
     echo ""
-    err "llm-wiki 升级失败，请先确认目标目录存在且已完成安装"
+    err "llm-wiki upgrade failed, please verify the target directory exists and installation was completed"
     exit 1
   fi
 
@@ -624,7 +588,7 @@ if [ "$UPGRADE" -eq 1 ]; then
   print_claude_upgrade_hint "$PLATFORM"
 
   echo ""
-  ok "llm-wiki 升级完成"
+  ok "llm-wiki upgrade complete"
   exit 0
 fi
 
@@ -640,10 +604,10 @@ if [ "$PLATFORM" = "auto" ]; then
   if [ "${#detected_platforms[@]}" -eq 1 ]; then
     PLATFORM="${detected_platforms[0]}"
   elif [ "${#detected_platforms[@]}" -eq 0 ]; then
-    err "没有检测到受支持的平台目录。请显式传入 --platform claude|codex|openclaw|hermes"
+    err "No supported platform directory detected. Please explicitly pass --platform claude|codex|openclaw|hermes"
     exit 1
   else
-    err "检测到多个可用平台：${detected_platforms[*]}。请显式传入 --platform"
+    err "Multiple available platforms detected: ${detected_platforms[*]}. Please explicitly pass --platform"
     exit 1
   fi
 fi
@@ -651,7 +615,7 @@ fi
 SKILL_ROOT="$(resolve_platform_skill_root "$PLATFORM")"
 
 if { [ "$INSTALL_HOOKS" -eq 1 ] || [ "$UNINSTALL_HOOKS" -eq 1 ]; } && [ "$PLATFORM" != "claude" ]; then
-  err "只有 Claude Code 支持 SessionStart hook"
+  err "Only Claude Code supports SessionStart hooks"
   exit 1
 fi
 
@@ -665,25 +629,25 @@ fi
 if [ "$UNINSTALL_HOOKS" -eq 1 ]; then
   uninstall_claude_session_hook "$TARGET_SKILL_DIR"
   echo ""
-  ok "llm-wiki hook 已移除"
+  ok "llm-wiki hook removed"
   exit 0
 fi
 
 if [ "$INSTALL_HOOKS" -eq 1 ] && [ "$PLATFORM_EXPLICIT" -eq 0 ] && [ -z "$TARGET_DIR" ]; then
   register_claude_session_hook "$TARGET_SKILL_DIR"
   echo ""
-  ok "llm-wiki hook 已准备完成"
+  ok "llm-wiki hook setup complete"
   exit 0
 fi
 
 echo ""
 echo "================================"
-echo "  llm-wiki 安装"
+echo "  llm-wiki Install"
 echo "================================"
 echo ""
-echo "平台：$PLATFORM"
-echo "技能根目录：$SKILL_ROOT"
-echo "目标目录：$TARGET_SKILL_DIR"
+echo "Platform: $PLATFORM"
+echo "Skill root: $SKILL_ROOT"
+echo "Target directory: $TARGET_SKILL_DIR"
 
 run_cmd mkdir -p "$SKILL_ROOT"
 run_cmd mkdir -p "$TARGET_SKILL_DIR"
@@ -705,4 +669,4 @@ if [ "$INSTALL_HOOKS" -eq 1 ]; then
 fi
 
 echo ""
-ok "llm-wiki 已准备完成"
+ok "llm-wiki setup complete"

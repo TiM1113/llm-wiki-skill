@@ -3,196 +3,196 @@ date: 2026-04-06
 topic: project-cleanup-and-restructuring
 ---
 
-# llm-wiki-skill 项目整理与重构规划
+# llm-wiki-skill Project Cleanup and Restructuring Plan
 
 ## Problem Frame
 
-llm-wiki-skill 经过 4 个版本的迭代（v0.1→v0.4），功能已经完整（8 个工作流、多平台、双语），但内部结构积累了重复和不一致。核心问题：SKILL.md 930 行、CWD 检查重复 7 次、双语输出占 40% 篇幅、英文种子文件硬编码、安装脚本复制了非运行时文件。这些让维护和迭代越来越难（每次修改工作流需同步更新多处内容，增加了引入不一致行为的风险）。
+After 4 versions of iteration (v0.1->v0.4), llm-wiki-skill has complete functionality (8 workflows, multi-platform, bilingual), but internal structure has accumulated duplication and inconsistency. Core issues: SKILL.md 930 lines, CWD check duplicated 7 times, bilingual output occupies 40% of content, English seed files hardcoded, install script copies non-runtime files. These make maintenance and iteration increasingly difficult (each workflow modification requires synchronous updates across multiple locations, increasing risk of introducing inconsistent behavior).
 
-分两阶段处理：**阶段 A（立即执行）** 是整理清洁，不改变功能；**阶段 B（记录备查）** 是结构重构，供未来参考。
+Split into two phases: **Phase A (immediate execution)** is cleanup, no functional changes; **Phase B (recorded for reference)** is structural refactoring, for future reference.
 
 ---
 
-## 阶段 A：整理清洁（立即执行）
+## Phase A: Cleanup (Immediate Execution)
 
-### SKILL.md 瘦身
+### SKILL.md Slimming
 
-**R1. CWD 前置检查去重**
-- 在 SKILL.md 的「工作流路由」段之后、各工作流定义之前，新增一个「通用前置检查」段
-- 内容：完整的 CWD 检查逻辑（检查 `.wiki-schema.md` → 回退 `~/.llm-wiki-path` → 无则提示初始化）+ `WIKI_LANG` 读取规则
-- 各工作流的「前置检查」段改为一行引用：「执行**通用前置检查**（见上方定义）」
-- 涉及 7 个工作流：ingest、batch-ingest、query、lint、status、digest、graph（init 的前置检查逻辑不同，保持独立）
+**R1. CWD Pre-check Deduplication**
+- After the "workflow routing" section in SKILL.md but before individual workflow definitions, add a new "common pre-check" section
+- Content: complete CWD check logic (check `.wiki-schema.md` → fall back to `~/.llm-wiki-path` → if missing, prompt initialization) + `WIKI_LANG` reading rules
+- Each workflow's "pre-check" section changed to a single reference: "Execute **common pre-check** (see definition above)"
+- Applies to 7 workflows: ingest, batch-ingest, query, lint, status, digest, graph (init has different pre-check logic, keep it independent)
 
-**R2. 双语输出精简**
-- 在「通用前置检查」段或紧邻位置，新增「输出语言规则」段：
-  - 说明所有工作流的用户输出都按 `WIKI_LANG` 选择语言
-  - 给出英文输出的通用格式规则（结构一致，用英文措辞）
-  - 列出英文专有术语对照表（如 素材→Source, 实体→Entity, 主题→Topic, 摘要→Summary, 综合→Synthesis）
-- 各工作流的输出段：只保留中文示例，加一句注释「（英文版按输出语言规则生成，结构相同）」
-- 涉及工作流：init、ingest（完整+简化）、batch-ingest、lint、status、digest、graph（注：query 仅有单行 `WIKI_LANG` 切换指令，无独立双语输出块，不在精简范围）
+**R2. Bilingual Output Simplification**
+- In or adjacent to the "common pre-check" section, add an "output language rules" section:
+  - Explain that all workflow user outputs follow `WIKI_LANG` for language selection
+  - Provide general formatting rules for English output (same structure, English wording)
+  - List English terminology mapping table (e.g. Source, Entity, Topic, Summary, Synthesis)
+- Each workflow's output section: keep only the Chinese example, add a one-line comment "(English version generated according to output language rules, same structure)"
+- Applies to workflows: init, ingest (full + simplified), batch-ingest, lint, status, digest, graph (note: query only has a single `WIKI_LANG` toggle instruction, no independent bilingual output block, not in scope for simplification)
 
-**R3. init 英文种子文件外移**
-- 将 SKILL.md 中 init 工作流的英文种子文件内容（index.md en、overview.md en、log.md en 三个代码块）移到 `templates/` 目录
-- 新增文件：`templates/index-en-template.md`、`templates/overview-en-template.md`、`templates/log-en-template.md`（与现有 `*-template.md` 命名规则一致）
-- init 工作流中改为：「如果 `WIKI_LANG=en`，使用 `templates/index-en-template.md`、`templates/overview-en-template.md`、`templates/log-en-template.md` 替换对应中文模板」
-- 保持 init-wiki.sh 不变（它只处理目录创建和通用变量替换）
+**R3. Move init English Seed Files Out**
+- Move the English seed file content from the init workflow in SKILL.md (index.md en, overview.md en, log.md en — three code blocks) to the `templates/` directory
+- New files: `templates/index-en-template.md`, `templates/overview-en-template.md`, `templates/log-en-template.md` (consistent with existing `*-template.md` naming convention)
+- In the init workflow, change to: "If `WIKI_LANG=en`, use `templates/index-en-template.md`, `templates/overview-en-template.md`, `templates/log-en-template.md` to replace the corresponding Chinese templates"
+- Keep init-wiki.sh unchanged (it only handles directory creation and generic variable substitution)
 
-### 安装脚本精简
+### Install Script Simplification
 
-**R4. install.sh MANAGED_ITEMS 审查**
-- 检查当前 `MANAGED_ITEMS` 数组，确认每项是否为运行时必需
-- 当前数组：`SKILL.md`、`README.md`、`CLAUDE.md`、`AGENTS.md`、`CHANGELOG.md`、`install.sh`、`setup.sh`、`scripts`、`templates`、`deps`、`platforms`
-- `platforms/` **必须保留**：README.md（4处）、CLAUDE.md（1处）、AGENTS.md（1处）中包含指向 platforms/ 下文件的链接，安装后这些链接必须有效
-- `docs/` 不在当前 MANAGED_ITEMS 中，无需操作
-- 可评估移除的候选项：`CHANGELOG.md`（安装后无运行时引用）、`install.sh` 自身（安装已完成）——但保留更安全，不做移除
-- 验证：运行 `tests/regression.sh` 确保安装功能正常
+**R4. install.sh MANAGED_ITEMS Audit**
+- Check the current `MANAGED_ITEMS` array, confirm whether each item is required at runtime
+- Current array: `SKILL.md`, `README.md`, `CLAUDE.md`, `AGENTS.md`, `CHANGELOG.md`, `install.sh`, `setup.sh`, `scripts`, `templates`, `deps`, `platforms`
+- `platforms/` **must be kept**: README.md (4 references), CLAUDE.md (1 reference), AGENTS.md (1 reference) contain links pointing to files under platforms/; these links must be valid after installation
+- `docs/` is not in the current MANAGED_ITEMS, no action needed
+- Candidates for possible removal: `CHANGELOG.md` (no runtime references after installation), `install.sh` itself (installation already complete) — but keeping them is safer, not removing
+- Verification: run `tests/regression.sh` to ensure installation works correctly
 
-**R5. setup.sh 标记废弃**
-- 在 setup.sh 文件头部加注释：`# 已废弃：请使用 bash install.sh --platform claude`
-- 不删除文件（保持向后兼容）
-- README 中如果有单独提到 setup.sh 的地方，更新为推荐 install.sh
+**R5. Mark setup.sh as Deprecated**
+- Add a comment at the top of setup.sh: `# Deprecated: please use bash install.sh --platform claude`
+- Do not delete the file (maintain backward compatibility)
+- If README mentions setup.sh separately anywhere, update to recommend install.sh
 
 ### Success Criteria
 
-- SKILL.md 行数减少至 ~750 行以下（CWD 去重复用约 40 行、英文输出块删除约 120 行、英文种子外移约 115 行，总计节省约 200 行）
-- 每个修改后的工作流功能与修改前完全一致
-- `tests/regression.sh` 全部通过
-- `bash install.sh --platform claude --dry-run` 输出中 platforms/ 仍被正确复制（因含运行时引用）
-- 对 `WIKI_LANG=en` 的 init 执行，手动验证 index.md、overview.md、log.md 的英文内容与修改前一致（此验证需人工执行，regression.sh 无法覆盖 AI 驱动的模板替换）
+- SKILL.md line count reduced to ~750 lines or below (CWD deduplication saves ~40 lines, English output block deletion saves ~120 lines, English seed externalization saves ~115 lines, total savings ~200 lines)
+- Each modified workflow functions identically to before the modification
+- `tests/regression.sh` all pass
+- `bash install.sh --platform claude --dry-run` output still correctly copies platforms/ (contains runtime references)
+- For `WIKI_LANG=en` init execution, manually verify that index.md, overview.md, log.md English content is identical to before the modification (this verification requires manual execution; regression.sh cannot cover AI-driven template substitution)
 
 ### Scope Boundaries
 
-- 不改变任何工作流的功能逻辑
-- 不拆分 SKILL.md 为多个文件
-- 不修改 deps/ 结构
-- 不增加版本管理/升级机制
-- 不修改 init-wiki.sh
+- Do not change any workflow's functional logic
+- Do not split SKILL.md into multiple files
+- Do not modify deps/ structure
+- Do not add version management/upgrade mechanisms
+- Do not modify init-wiki.sh
 
 ### Key Decisions
 
-- **内部去重而非拆文件**：CWD 检查提取为共享段落但保持在同一文件内，避免引入多文件加载机制
-- **单语展示 + 统一规则**：双语输出只展示中文版，英文版通过顶部规则推导，大幅减少重复
-- **英文种子文件走模板系统**：与中文模板保持一致的机制，init 工作流逻辑更统一。英文模板和中文模板走不同的变量替换路径（AI vs 脚本），这个不一致在当前「不修改 init-wiki.sh」的约束下可接受——init-wiki.sh 仍处理中文模板，AI 在后续步骤中读取 `templates/*-en-template.md`，替换 `{{DATE}}`/`{{TOPIC}}` 后覆盖对应文件
-- **platforms/ 必须保留在安装包中**：README.md（4处）、CLAUDE.md（1处）、AGENTS.md（1处）含运行时链接
+- **Internal deduplication rather than splitting files**: CWD check extracted as a shared paragraph but kept within the same file, avoiding introducing a multi-file loading mechanism
+- **Single-language display + unified rules**: Bilingual output only shows the Chinese version; English version derived through top-level rules, greatly reducing duplication
+- **English seed files go through the template system**: Consistent mechanism with Chinese templates, making init workflow logic more unified. English and Chinese templates go through different variable substitution paths (AI vs script); this inconsistency is acceptable under the current "do not modify init-wiki.sh" constraint — init-wiki.sh still handles Chinese templates, AI reads `templates/*-en-template.md` in subsequent steps, replaces `{{DATE}}`/`{{TOPIC}}` and overwrites the corresponding files
+- **platforms/ must be kept in the install package**: README.md (4 references), CLAUDE.md (1 reference), AGENTS.md (1 reference) contain runtime links
 
 ---
 
-## 阶段 B：结构重构（记录备查）
+## Phase B: Structural Refactoring (Recorded for Reference)
 
-以下项目不在本次清洁范围内，记录供未来参考。
+The following items are not within the scope of this cleanup, recorded for future reference.
 
-### 阶段 B 的共享约束
+### Shared Constraints for Phase B
 
-阶段 B 不是为了先做一个“更像插件系统”的外壳，而是先把**知识库主线**和**外挂进料能力**切开。
+Phase B is not about building a shell that “looks more like a plugin system” first, but about separating the **knowledge base mainline** from the **adapter ingestion capabilities**.
 
-**底线**：
-- 知识库主线必须独立成立：本地文件、纯文本、已有知识库的 `query / digest / lint / status / graph` 不能依赖外挂
-- 所有外挂都只负责把外部内容转换成统一素材；一旦进入主线，后续整理流程完全一致
-- 拆掉任意一个外挂，不得让核心知识库能力失效
-- Phase 1 不做自动发现、插件市场、复杂启停界面；先做边界、降级、兼容
+**Bottom line**:
+- The knowledge base mainline must stand on its own: local files, plain text, existing knowledge base `query / digest / lint / status / graph` cannot depend on adapters
+- All adapters are only responsible for converting external content into unified source material; once entering the mainline, the subsequent processing flow is completely identical
+- Removing any single adapter must not cause core knowledge base capabilities to fail
+- Phase 1 does not implement auto-discovery, plugin marketplace, or complex enable/disable UI; focus on boundaries, degradation, and compatibility first
 
-**Phase 1 开工前必须补齐的文档钉子**：
-- 统一素材入口定义：最小字段、由谁填充、进入主线前必须具备什么信息
-- 外挂单一总表：来源、分类、依赖、原始目录、回退方式
-- 外挂失败状态表：未安装 / 环境不满足 / 运行失败 / 来源不支持 / 提取为空
-- 旧知识库兼容与迁移规则：老目录、老素材、老安装继续可用
+**Documentation prerequisites that must be completed before Phase 1 begins**:
+- Unified source material entry definition: minimum fields, who fills them, what information must be present before entering the mainline
+- Single adapter registry: source, category, dependencies, original directory, fallback method
+- Adapter failure state table: not installed / environment not met / runtime failure / source not supported / extraction empty
+- Legacy knowledge base compatibility and migration rules: old directories, old source materials, old installations continue to work
 
-### B1. SKILL.md 多文件拆分（维护态拆分，交付态保留单入口）
+### B1. SKILL.md Multi-file Split (Split for Maintenance, Keep Single Entry for Delivery)
 
-> **与阶段 A 的关系**：阶段 A 的去重不会阻碍 B1；但 B1 不应抢在边界稳定之前执行。
+> **Relationship with Phase A**: Phase A's deduplication will not block B1; but B1 should not be done before boundaries are stabilized.
 
-**现状**：核心说明集中在单文件中，维护时改一处容易漏多处。
+**Current state**: Core instructions are concentrated in a single file; modifying one place during maintenance easily leads to missing other places.
 
-**目标**：
-- 维护态可以拆成主路由 + `workflows/` 子文件，降低修改时的心智负担
-- 对外仍保留一个稳定入口，不要求运行时依赖多文件引用机制
+**Goal**:
+- For maintenance, can be split into main router + `workflows/` sub-files, reducing cognitive load during modifications
+- Externally, still keep a stable single entry point, not requiring runtime multi-file reference mechanisms
 
-**好处**：
-- 改动隔离，更容易审查
-- 主路由和具体工作流职责更清楚
+**Benefits**:
+- Change isolation, easier to review
+- Main router and specific workflow responsibilities are clearer
 
-**风险**：
-- 不同 agent 对 skill 文件引用的支持程度不一致
-- 如果把运行时也做成多文件，安装体验可能变脆
+**Risks**:
+- Different agents have inconsistent support for skill file references
+- If runtime is also made multi-file, the installation experience may become fragile
 
-**结论**：B1 不是 Phase 1。先把边界、总表和失败状态钉死，再决定是否拆文件。
+**Conclusion**: B1 is not Phase 1. First nail down boundaries, registry, and failure states, then decide whether to split files.
 
-### B2. deps/ 依赖管理重构（先立边界，再决定外拉）
+### B2. deps/ Dependency Management Refactoring (Establish Boundaries First, Then Decide on External Fetching)
 
-**现状**：`baoyu-url-to-markdown` 和 `youtube-transcript` 直接嵌在 repo 中，`wechat-article-to-markdown` 则在安装时外拉。
+**Current state**: `baoyu-url-to-markdown` and `youtube-transcript` are directly embedded in the repo, while `wechat-article-to-markdown` is fetched externally during installation.
 
-**目标**：
-- 先明确“核心内置”和“可选外挂依赖”的边界
-- 再决定哪些依赖继续内置，哪些允许安装时拉取
-- 安装、状态检查、未来升级逻辑都读取同一份来源总表
+**Goal**:
+- First clarify the boundary between “core built-in” and “optional adapter dependencies”
+- Then decide which dependencies continue to be built-in, which are allowed to be fetched during installation
+- Installation, status checks, and future upgrade logic all read from the same source registry
 
-**好处**：
-- 后续接入或移除外挂时，不会牵动核心功能
-- 依赖策略更一致，不会出现一半内置、一半散落脚本里的状态
+**Benefits**:
+- When subsequently adding or removing adapters, core functionality is not affected
+- Dependency strategy is more consistent, avoiding the state where half are built-in and half are scattered in scripts
 
-**风险**：
-- 如果过早把依赖全部外拉，会引入网络和安装不稳定性
-- submodule 会提高维护复杂度
+**Risks**:
+- If dependencies are all externalized too early, it introduces network and installation instability
+- Submodules increase maintenance complexity
 
-**结论**：Phase 1 只做边界和总表，不急着把依赖全部外拉。
+**Conclusion**: Phase 1 only does boundaries and the registry, no rush to externalize all dependencies.
 
-### B3. 双语 i18n 外部化（延后）
+### B3. Bilingual i18n Externalization (Deferred)
 
-**现状**：双语内容已经比之前更收敛，但仍分散在核心说明中。
+**Current state**: Bilingual content is more converged than before, but still scattered in core instructions.
 
-**目标**：未来可用 `locales/zh.md` 和 `locales/en.md` 集中管理输出模板。
+**Goal**: In the future, use `locales/zh.md` and `locales/en.md` to centrally manage output templates.
 
-**好处**：
-- 新增语言时不会反复改主文件
-- 文案维护更集中
+**Benefits**:
+- Adding new languages won't require repeatedly modifying the main file
+- Copy maintenance is more centralized
 
-**风险**：
-- 在边界未稳定前继续拆文案，会放大维护面
-- 依赖文件引用能力，和 B1 有同样的兼容顾虑
+**Risks**:
+- Continuing to split copy before boundaries are stable will expand the maintenance surface
+- Depends on file reference capability, same compatibility concerns as B1
 
-**结论**：B3 不进入 Phase 1，等核心/外挂边界稳定后再做。
+**Conclusion**: B3 does not enter Phase 1; wait until core/adapter boundaries are stable before doing this.
 
-### B4. 版本管理与升级（先做轻量版）
+### B4. Version Management and Upgrades (Start with Lightweight Version)
 
-**现状**：重复安装会覆盖文件，但用户不知道当前版本、也不知道外挂状态。
+**Current state**: Repeated installation overwrites files, but users don't know the current version or adapter status.
 
-**目标**：
-- 先让版本和已安装能力可见
-- 再考虑升级、回退、卸载等完整生命周期命令
+**Goal**:
+- First make the version and installed capabilities visible
+- Then consider upgrade, rollback, uninstall and other complete lifecycle commands
 
-**第一步只做**：
-- 能看见当前 skill 版本
-- 能看见当前有哪些可选外挂处于可用 / 不可用状态
-- 为后续 `doctor / upgrade / uninstall` 留出入口
+**First step only does**:
+- Can see the current skill version
+- Can see which optional adapters are currently in available / unavailable status
+- Leave entry points for subsequent `doctor / upgrade / uninstall`
 
-**结论**：B4 值得做，但先做轻量版，不在 Phase 1 里追求完整回退系统。
+**Conclusion**: B4 is worth doing, but start with the lightweight version; don't pursue a complete rollback system in Phase 1.
 
-### B5. 确定性逻辑脚本化（Phase 1 第一优先级）
+### B5. Deterministic Logic Scriptification (Phase 1 Top Priority)
 
-**现状**：CWD 检查、素材分类、状态判断等确定性动作仍主要靠说明文字驱动。
+**Current state**: CWD checks, source material classification, status determination and other deterministic actions are still primarily driven by instruction text.
 
-**目标**：
-- 先把最容易漂移的确定性逻辑收成脚本或统一规则
-- AI 只负责分析和生成，不负责反复做相同判断
+**Goal**:
+- First convert the most drift-prone deterministic logic into scripts or unified rules
+- AI is only responsible for analysis and generation, not for repeatedly making the same judgments
 
-**Phase 1 优先脚本化的内容**：
-- CWD / 知识库根路径判断
-- 来源总表读取与原始目录映射
-- 状态检查分类（核心可用、外挂缺失、环境不满足、运行失败）
+**Phase 1 priority scriptification targets**:
+- CWD / knowledge base root path determination
+- Source registry reading and raw directory mapping
+- Status check classification (core available, adapter missing, environment not met, runtime failure)
 
-**Phase 1 暂不强求脚本化的内容**：
-- `index.md` / `log.md` 的完整更新流程
-- 复杂的批量修复逻辑
+**Phase 1 does not require scriptification of**:
+- Complete update flow for `index.md` / `log.md`
+- Complex batch repair logic
 
-**结论**：B5 是 Phase 1 的起点。先做它，后续 B2/B4 才有稳定落点。
+**Conclusion**: B5 is the starting point of Phase 1. Do it first, then B2/B4 will have a stable foundation.
 
-### 阶段 B 推荐执行顺序
+### Recommended Execution Order for Phase B
 
-1. B5：先把确定性边界、总表、状态判断立住
-2. B4（轻量版）：让版本和外挂状态可见
-3. B2：在统一总表下重构依赖管理策略
-4. B1：边界稳定后再考虑维护态拆分
-5. B3：最后处理更深的双语外部化
+1. B5: First establish deterministic boundaries, registry, and status determination
+2. B4 (lightweight version): Make version and adapter status visible
+3. B2: Refactor dependency management strategy under the unified registry
+4. B1: Consider maintenance-mode splitting after boundaries are stable
+5. B3: Handle deeper bilingual externalization last
 
 ---
 
@@ -200,16 +200,16 @@ llm-wiki-skill 经过 4 个版本的迭代（v0.1→v0.4），功能已经完整
 
 ### Resolve Before Planning
 
-- [Resolved] Phase 1 的目标不是完整插件平台，而是“核心主线独立 + 外挂可插拔”
-- [Resolved] 需要先补统一素材入口、外挂总表、失败状态表、兼容规则，再进入实现
-- [Resolved] 自动发现、插件市场、复杂启停不属于 Phase 1
+- [Resolved] Phase 1's goal is not a complete plugin platform, but “core mainline independent + adapters pluggable”
+- [Resolved] Need to first complete unified source material entry, adapter registry, failure state table, and compatibility rules before entering implementation
+- [Resolved] Auto-discovery, plugin marketplace, complex enable/disable are not part of Phase 1
 
 ### Deferred to Planning
-- [Phase 1][Technical] 统一来源总表最终以哪种格式落地，既便于维护，又兼容 bash 3.2
-- [Phase 1][Technical] `status` 是否直接展示五种外挂失败状态，还是先保留为内部规则
-- [Phase 1][Compatibility] 老知识库若缺少新字段或新目录，采用惰性兼容还是显式 migrate
+- [Phase 1][Technical] What format should the unified source registry ultimately use, balancing maintainability with bash 3.2 compatibility
+- [Phase 1][Technical] Should `status` directly display the five adapter failure states, or keep them as internal rules for now
+- [Phase 1][Compatibility] When legacy knowledge bases lack new fields or new directories, use lazy compatibility or explicit migrate
 
 ## Next Steps
 
-→ 先完成 `docs/plans/2026-04-06-002-phase-b-core-and-adapter-separation-plan.md`
-→ 再按该计划生成 Phase 1 的执行待办，按依赖顺序推进
+→ First complete `docs/plans/2026-04-06-002-phase-b-core-and-adapter-separation-plan.md`
+→ Then generate Phase 1 execution tasks based on that plan, proceeding in dependency order

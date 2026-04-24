@@ -96,15 +96,15 @@ vm.runInContext(`${extractFunction('applyMinimapCollapsed')}; this.applyMinimapC
 context.applyMinimapCollapsed(true);
 
 context.minimapEl = makeEl({ 'data-collapsed': '0' });
-context.minimapToggle = makeEl({ 'aria-expanded': 'true', 'aria-label': '折叠小地图' });
+context.minimapToggle = makeEl({ 'aria-expanded': 'true', 'aria-label': 'Collapse minimap' });
 context.applyMinimapCollapsed(true);
 if (context.minimapEl.attrs['data-collapsed'] !== '1') throw new Error('minimap collapsed state not updated');
 if (context.minimapToggle.attrs['aria-expanded'] !== 'false') throw new Error('minimap aria-expanded not collapsed');
-if (context.minimapToggle.attrs['aria-label'] !== '展开小地图') throw new Error('minimap aria-label not collapsed');
+if (context.minimapToggle.attrs['aria-label'] !== 'Expand minimap') throw new Error('minimap aria-label not collapsed');
 context.applyMinimapCollapsed(false);
 if (context.minimapEl.attrs['data-collapsed'] !== '0') throw new Error('minimap expanded state not updated');
 if (context.minimapToggle.attrs['aria-expanded'] !== 'true') throw new Error('minimap aria-expanded not expanded');
-if (context.minimapToggle.attrs['aria-label'] !== '折叠小地图') throw new Error('minimap aria-label not expanded');
+if (context.minimapToggle.attrs['aria-label'] !== 'Collapse minimap') throw new Error('minimap aria-label not expanded');
 NODE
 
     rm -rf "$tmp_dir"

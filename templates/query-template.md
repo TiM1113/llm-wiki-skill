@@ -9,11 +9,11 @@ sources: [{{SOURCES}}]
 related: [{{RELATED}}]
 ---
 
-## 问题
+## Question
 {{QUESTION}}
 
-## 回答
+## Answer
 {{ANSWER}}
 
-## 引用来源
+## Cited Sources
 {{SOURCE_LINKS}}

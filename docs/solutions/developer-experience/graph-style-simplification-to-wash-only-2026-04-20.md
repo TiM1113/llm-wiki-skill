@@ -1,5 +1,5 @@
 ---
-title: 从三风格图谱简化为 wash-only 单风格的决策与实施
+title: Simplifying from three graph styles to wash-only single style
 date: 2026-04-20
 category: developer-experience
 module: interactive-graph
@@ -7,28 +7,28 @@ problem_type: developer_experience
 component: tooling
 severity: medium
 applies_when:
-  - 用户测试后对多选项中的部分效果不满意，需要快速裁剪已实现的功能
-  - 图谱模板或 UI 风格需要根据实际视觉效果做取舍
+  - Users test multiple options and find some visual effects unsatisfactory, requiring quick pruning of implemented features
+  - Graph templates or UI styles need to be selected/trimmed based on actual visual results
 tags: [graph, knowledge-graph, wash, refactor, template, vis-network, d3, roughjs]
 ---
 
-# 从三风格图谱简化为 wash-only 单风格的决策与实施
+# Simplifying from three graph styles to wash-only single style
 
 ## Context
 
-`llm-wiki-skill` 的交互式知识图谱经历了三个分支的视觉迭代：
+The `llm-wiki-skill` interactive knowledge graph went through three visual iteration branches:
 
-1. **`feat/interactive-graph`**（4月17日）：vis-network 经典版，PR #15 合并。自动化测试全过，但用户实际打开后发现节点重叠、连线交叉成"毛线球"、标签叠在一起。
-2. **`feat/sketchy-graph-redesign`**（4月18-19日）：对 vis-network 做了多轮布局优化（力导向参数自适应、孤立节点计数、移动端 overlay），但 vis-network 渲染效果天花板明显，用户放弃。
-3. **`feat/graph-html-styles-v3`**（4月20日）：引入 D3 + Rough.js 的 paper（手绘笔记本）和 wash（水彩卡片）两套模板，计划三风格并存。端到端测试后只有 wash 视觉可接受，最终裁剪为 wash-only。
+1. **`feat/interactive-graph`** (Apr 17): vis-network classic version, PR #15 merged. Automated tests all passed, but when users actually opened it they found node overlap, crossing connections forming "yarn balls", and overlapping labels.
+2. **`feat/sketchy-graph-redesign`** (Apr 18-19): Multiple rounds of layout optimization on vis-network (force-directed parameter adaptation, isolated node counting, mobile overlay), but vis-network rendering quality ceiling was obvious; user abandoned.
+3. **`feat/graph-html-styles-v3`** (Apr 20): Introduced D3 + Rough.js paper (hand-drawn notebook) and wash (watercolor card) templates, planning three coexisting styles. After end-to-end testing only wash was visually acceptable; trimmed to wash-only.
 
-关键教训：**自动化测试通过不等于用户可接受**。图谱必须视觉可读才算达标。
+Key lesson: **Passing automated tests does not equal user acceptability**. Graphs must be visually readable to qualify.
 
 ## Guidance
 
-### 1. 删除多余模板和 vendor
+### 1. Delete excess templates and vendor files
 
-删除 11 个文件（classic 的 header/footer/vis-network/license + paper 整个目录 + 从 templates/ 移出的 marked/purify）：
+Delete 11 files (classic's header/footer/vis-network/license + paper directory + moved marked/purify from templates/):
 
 ```bash
 git rm templates/graph-template-header.html \
@@ -42,21 +42,21 @@ git rm templates/graph-template-header.html \
 rm -rf templates/graph-styles/paper/
 ```
 
-`deps/` 下的 d3.min.js、rough.min.js、marked.min.js、purify.min.js 及 LICENSE 保留——wash 依赖这些。
+`deps/` d3.min.js, rough.min.js, marked.min.js, purify.min.js and LICENSE files remain — wash depends on these.
 
-### 2. 简化构建脚本
+### 2. Simplify build script
 
-`scripts/build-graph-html.sh` 从 275 行（`--style` 参数 + 三分支 prepare_style + build_one 循环）简化到 ~155 行：
+`scripts/build-graph-html.sh` simplified from 275 lines (`--style` parameter + three-branch prepare_style + build_one loop) to ~155 lines:
 
-- 移除 `--style classic|paper|wash|all` 参数解析和 `POSITIONAL` 数组
-- 移除 `prepare_style()` 函数
-- 硬编码 wash 路径：`graph-styles/wash/header.html`、`graph-styles/wash/footer.html`
-- 输出统一为 `wiki/knowledge-graph.html`（不是 `knowledge-graph-wash.html`）
-- `ASSET_SPECS` 固定为 wash 的 vendor 列表
-- 保留：`__WIKI_TITLE__` 占位符替换、`</script>` 转义、vendor 复制
+- Removed `--style classic|paper|wash|all` parameter parsing and `POSITIONAL` array
+- Removed `prepare_style()` function
+- Hardcoded wash paths: `graph-styles/wash/header.html`, `graph-styles/wash/footer.html`
+- Output unified to `wiki/knowledge-graph.html` (not `knowledge-graph-wash.html`)
+- `ASSET_SPECS` fixed to wash vendor list
+- Retained: `__WIKI_TITLE__` placeholder replacement, `</script>` escaping, vendor copying
 
 ```bash
-# 之前：三种风格分支
+# Before: three style branches
 prepare_style() {
   case "$style" in
     classic) HEADER="$TEMPLATES_DIR/graph-template-header.html" ... ;;
@@ -65,64 +65,64 @@ prepare_style() {
   esac
 }
 
-# 之后：直接写死 wash
+# After: hardcoded wash
 HEADER="$TEMPLATES_DIR/graph-styles/wash/header.html"
 FOOTER="$TEMPLATES_DIR/graph-styles/wash/footer.html"
 OUTPUT="$WIKI_ROOT/wiki/knowledge-graph.html"
 ```
 
-### 3. 重写回归测试
+### 3. Rewrite regression tests
 
-三个独立回归测试文件和 `tests/regression.sh` 里的四个 graph 测试函数全部改为 wash 断言：
+Three independent regression test files and four graph test functions in `tests/regression.sh` all changed to wash assertions:
 
-- **styles 回归**：断言 `knowledge-graph.html` 存在、d3/rough/marked/purify/graph-wash.js 存在、HTML 含 `<script id="graph-data"`、不含 `cdn.jsdelivr.net`、不含 `vis-network.min.js`
-- **mobile 回归**：断言 `@media (max-width: 900px)` 响应式规则、`.drawer` 类、`closeDrawer` 在 graph-wash.js 里（不在 HTML 里——它通过 `<script src>` 加载）
-- **search 回归**：断言 HTML 含 `search__input`/`search-dropdown`、graph-wash.js 含 `setupSearch`/`getElementById("search")`
-- **regression.sh**：两参数经典调用改为单参数 wash 调用，vis-network 资产断言改为 d3/rough 资产断言
+- **styles regression**: Assert `knowledge-graph.html` exists, d3/rough/marked/purify/graph-wash.js exist, HTML contains `<script id="graph-data"`, doesn't contain `cdn.jsdelivr.net`, doesn't contain `vis-network.min.js`
+- **mobile regression**: Assert `@media (max-width: 900px)` responsive rules, `.drawer` class, `closeDrawer` in graph-wash.js (not in HTML — loaded via `<script src>`)
+- **search regression**: Assert HTML contains `search__input`/`search-dropdown`, graph-wash.js contains `setupSearch`/`getElementById("search")`
+- **regression.sh**: Two-argument classic call changed to single-argument wash call, vis-network asset assertions changed to d3/rough asset assertions
 
-踩坑：mobile 测试最初在 HTML 里找 `closeDrawer()` 失败，因为 wash 的 JS 逻辑在 `graph-wash.js`（`<script src>` 外链）而不是内联在 HTML 里。解决：断言改为检查 `graph-wash.js` 文件。
+Pitfall: mobile test initially failed finding `closeDrawer()` in HTML, because wash's JS logic is in `graph-wash.js` (`<script src>` external link) not inline in HTML. Fix: assertion changed to check `graph-wash.js` file.
 
 ## Why This Matters
 
-- **用户只关心结果**：三种风格并存是工程上的优雅，但用户只需要一个能看的图。裁剪比修补更果断。
-- **install.sh 自动适配**：它用 `cp -R templates/` 和 `cp -R deps/`，不需要改——删除文件后新安装自动不含旧文件。
-- **保留分支草稿**：`feat/sketchy-graph-redesign` 分支保留了 vis-network 的多轮布局优化尝试（11 个提交），未删除。如果以后需要重新评估 vis-network 方案，可以从这里恢复。
+- **Users only care about results**: Three coexisting styles is elegant engineering, but users only need one graph that works. Trimming is more decisive than patching.
+- **install.sh auto-adapts**: It uses `cp -R templates/` and `cp -R deps/`, no changes needed — after deleting files, new installations automatically exclude old files.
+- **Branch drafts preserved**: The `feat/sketchy-graph-redesign` branch preserves vis-network's multi-round layout optimization attempts (11 commits), not deleted. Can be recovered if vis-network needs re-evaluation later.
 
 ## When to Apply
 
-- 多选项功能经过实际使用测试后，部分选项效果不达标时，果断裁剪
-- 模板/vendor 文件的批量删除：先 `git rm`，确认 `install.sh` 的 `cp -R` 不受影响
-- 回归测试重写：当测试断言了被删除代码的具体实现细节（如函数名、CSS 类名），需要同步更新到新实现
+- When multi-option features fail user testing on some options, trim decisively
+- Batch deletion of template/vendor files: `git rm` first, confirm `install.sh`'s `cp -R` is unaffected
+- Regression test rewrite: when tests assert implementation details of deleted code (function names, CSS class names), update to new implementation in sync
 
 ## Examples
 
-**删除多余 README 条目**（合并重复行）：
+**Delete duplicate README entries** (merge duplicate lines):
 
 ```markdown
-# 之前（重复）
-- **交互式知识图谱**：生成自包含 HTML...
-- **水彩卡片风知识图谱**：生成自包含 HTML...
+# Before (duplicate)
+- **Interactive knowledge graph**: Generate self-contained HTML...
+- **Watercolor card style knowledge graph**: Generate self-contained HTML...
 
-# 之后（合并）
-- **水彩卡片风交互式知识图谱**：生成自包含 HTML...
+# After (merged)
+- **Watercolor card style interactive knowledge graph**: Generate self-contained HTML...
 ```
 
-**CHANGELOG 版本号跳到 v3.0**：
+**CHANGELOG version jump to v3.0**:
 
 ```markdown
 ## v3.0.0 (2026-04-20)
 
-### 新增
-- **水彩卡片风交互式知识图谱**：`build-graph-html.sh` 生成 `wiki/knowledge-graph.html`...
+### Added
+- **Watercolor card style interactive knowledge graph**: `build-graph-html.sh` generates `wiki/knowledge-graph.html`...
 
-### 移除
-- classic（vis-network）和 paper（手绘笔记本）图谱风格及相关模板
-- `--style` 参数和二参数兼容调用方式
+### Removed
+- classic (vis-network) and paper (hand-drawn notebook) graph styles and related templates
+- `--style` parameter and two-argument compatibility calling convention
 ```
 
 ## Related
 
-- Session history: `feat/sketchy-graph-redesign` 分支保留了 vis-network 布局优化尝试（未合并）
-- 前置工作: `docs/solutions/integration-issues/claude-code-hook-pretooluse-to-sessionstart-2026-04-11.md`（SessionStart hook 基础设施）
-- 前置工作: `docs/solutions/workflow-issues/cache-update-reliability-2026-04-16.md`（缓存可靠性机制）
-- 后续修复: `docs/solutions/ui-bugs/graph-wash-null-safety-and-label-truncation-fix-2026-04-21.md`（wash-only 简化后遗漏的空引用防护和标签截断统一）
+- Session history: `feat/sketchy-graph-redesign` branch preserves vis-network layout optimization attempts (not merged)
+- Prior work: `docs/solutions/integration-issues/claude-code-hook-pretooluse-to-sessionstart-2026-04-11.md` (SessionStart hook infrastructure)
+- Prior work: `docs/solutions/workflow-issues/cache-update-reliability-2026-04-16.md` (cache reliability mechanism)
+- Follow-up fix: `docs/solutions/ui-bugs/graph-wash-null-safety-and-label-truncation-fix-2026-04-21.md` (null reference protection and label truncation unification missed after wash-only simplification)

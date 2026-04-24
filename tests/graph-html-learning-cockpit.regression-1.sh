@@ -102,7 +102,7 @@ test_learning_cockpit_js_has_runtime_hooks() {
     assert_file_contains "$js" 'setNavCollapsed('
     assert_file_contains "$js" 'setSecondaryOpen('
     assert_file_contains "$js" 'getContextRecommendedStartNodeId('
-    assert_file_contains "$js" '全局辅助起点'
+    assert_file_contains "$js" 'Global suggested start'
     assert_file_contains "$js" 'applySubgraph()'
     assert_file_contains "$js" 'updateVisibleSnapshot()'
     assert_file_contains "$js" 'syncResponsiveUI()'

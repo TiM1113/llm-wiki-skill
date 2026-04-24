@@ -1,5 +1,5 @@
 ---
-tags: [素材摘要]
+tags: [source summary]
 source_path: raw/articles/test-source.md
 images: 2
 image_paths:
@@ -9,7 +9,7 @@ image_paths:
 
 # Test Source
 
-这是一个测试用的素材摘要页，故意不收录在 index.md 中。
-用于验证反向 index 一致性检查和图片资产一致性检查。
+This is a test source summary page, intentionally not listed in index.md.
+Used to verify reverse index consistency checks and image asset consistency checks.
 
-引用 [[Real]]。
+References [[Real]].

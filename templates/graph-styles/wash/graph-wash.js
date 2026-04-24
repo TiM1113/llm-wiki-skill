@@ -1026,7 +1026,7 @@
     if (!node) return;
     state.queue = toggleQueueFavorite(state.queue, node.id);
     const active = isFavoriteNode(node.id);
-    toast(active ? "已加入收藏" : "已取消收藏");
+    toast(active ? "Added to favorites" : "Removed from favorites");
     updateQueueUI();
     if (state.selected === node.id) openDetailDrawer(node.id);
   }
@@ -1041,7 +1041,7 @@
       : "";
     const note = createQueueNote(node, scopedSelectedText);
     state.queue = appendQueueNote(state.queue, note, QUEUE_NOTE_LIMIT);
-    toast(scopedSelectedText ? "已收进学习笔记" : "已记下当前节点");
+    toast(scopedSelectedText ? "Saved to study notes" : "Noted current node");
     updateQueueUI();
     if (state.selected === node.id) openDetailDrawer(node.id);
   }
@@ -1053,27 +1053,27 @@
     document.getElementById("drawer").setAttribute("aria-hidden", "false");
 
     document.getElementById("dr-kicker").textContent = ({
-      entity: "Entity · 实体",
-      topic: "Topic · 主题",
-      source: "Source · 来源"
+      entity: "Entity",
+      topic: "Topic",
+      source: "Source"
     })[n.type] || n.type;
 
     document.getElementById("dr-title").textContent = n.label || n.id;
 
     const commEl = document.getElementById("dr-community");
     if (n.community != null) {
-      commEl.textContent = "社区 · " + n.community;
+      commEl.textContent = "Community · " + n.community;
       commEl.hidden = false;
     } else {
       commEl.hidden = true;
     }
-    document.getElementById("dr-degree").textContent = `${n.degree} 条关联`;
+    document.getElementById("dr-degree").textContent = `${n.degree} connections`;
 
     const favoriteButton = document.getElementById("dr-favorite");
     if (favoriteButton) {
       const favorited = isFavoriteNode(n.id);
       favoriteButton.setAttribute("data-on", favorited ? "1" : "0");
-      favoriteButton.textContent = favorited ? "★ 已收藏" : "☆ 收藏";
+      favoriteButton.textContent = favorited ? "★ Favorited" : "☆ Favorite";
       favoriteButton.onclick = () => handleFavoriteToggle(n);
     }
     const noteButton = document.getElementById("dr-note");
@@ -1126,7 +1126,7 @@
     const nb = document.getElementById("nb-list");
     nb.innerHTML = "";
     if (!neighbors.length) {
-      nb.innerHTML = `<div style="color:var(--paper-ink-faint); font-family: var(--font-hand); padding: 10px;">（孤立节点）</div>`;
+      nb.innerHTML = `<div style="color:var(--paper-ink-faint); font-family: var(--font-hand); padding: 10px;">(Isolated node)</div>`;
     }
     neighbors.forEach(o => {
       if (!o.other) return;
@@ -1242,7 +1242,7 @@
   function updateInsightsTitle() {
     const panelTitle = document.getElementById("panel-title");
     if (!panelTitle) return;
-    panelTitle.textContent = state.learning.activeMode === "global" ? "Insights" : "洞察";
+    panelTitle.textContent = state.learning.activeMode === "global" ? "Insights" : "Insights";
   }
 
   function setNavOpen(open) {
@@ -1256,7 +1256,7 @@
     state.ui.navCollapsed = collapsed;
     const app = document.getElementById("app");
     if (app) app.classList.toggle("nav-collapsed", !!collapsed && window.innerWidth >= NAV_BREAKPOINT);
-    if (navClose) navClose.setAttribute("aria-label", collapsed ? "展开学习导航" : "收起学习导航");
+    if (navClose) navClose.setAttribute("aria-label", collapsed ? "Expand learning nav" : "Collapse learning nav");
   }
 
   function setSecondaryOpen(open) {
@@ -1276,9 +1276,9 @@
       <span class="nav-community__row">
         <span class="nav-community__title">${escapeHtml(community.label || community.id)}</span>
         ${community.is_primary ? '<span class="nav-community__badge">TOP</span>' : ""}
-        ${selectedCommunityId === String(community.id) && !isActive ? '<span class="nav-community__badge">当前</span>' : ""}
+        ${selectedCommunityId === String(community.id) && !isActive ? '<span class="nav-community__badge">Current</span>' : ""}
       </span>
-      <span class="nav-community__meta">${community.node_count || 0} 个节点 · ${community.source_count || 0} 个来源</span>
+      <span class="nav-community__meta">${community.node_count || 0} nodes · ${community.source_count || 0} sources</span>
     `;
     button.addEventListener("click", () => {
       setActiveCommunity(community.id);
@@ -1292,10 +1292,10 @@
     navFocus.innerHTML = "";
 
     const options = [
-      { id: "all", title: "显示当前全部", meta: activeCommunity ? `完整显示「${escapeHtml(activeCommunity.label || activeCommunity.id)}」当前范围` : "完整显示当前全局范围" },
-      { id: "core", title: "只看核心节点", meta: activeCommunity ? `围绕「${escapeHtml(activeCommunity.label || activeCommunity.id)}」保留关键节点` : "在全局里优先保留连接最强的节点" },
-      { id: "one_hop", title: "只看一级关联", meta: state.selected ? "围绕当前选中节点显示一跳邻居" : "围绕推荐起点显示一跳邻居" },
-      { id: "high_confidence", title: "只看高置信度", meta: "仅保留高权重连接及相关节点" }
+      { id: "all", title: "Show all", meta: activeCommunity ? `Show full scope of "${escapeHtml(activeCommunity.label || activeCommunity.id)}"` : "Show full global scope" },
+      { id: "core", title: "Core nodes only", meta: activeCommunity ? `Keep key nodes around "${escapeHtml(activeCommunity.label || activeCommunity.id)}"` : "Prioritize strongest-connected nodes globally" },
+      { id: "one_hop", title: "One-hop only", meta: state.selected ? "Show one-hop neighbors of current selection" : "Show one-hop neighbors of recommended start" },
+      { id: "high_confidence", title: "High confidence only", meta: "Keep only high-weight connections and related nodes" }
     ];
 
     options.forEach((option) => {
@@ -1306,7 +1306,7 @@
       item.innerHTML = `
         <span class="nav-panel__secondary-row">
           <span class="nav-panel__secondary-title">${option.title}</span>
-          <span class="nav-panel__secondary-badge">${state.learning.focusMode === option.id ? "当前" : "聚焦"}</span>
+          <span class="nav-panel__secondary-badge">${state.learning.focusMode === option.id ? "Current" : "Focus"}</span>
         </span>
         <span class="nav-panel__secondary-meta">${option.meta}</span>
       `;
@@ -1333,15 +1333,15 @@
     const card = document.createElement("div");
     card.className = "nav-panel__queue-card";
     card.innerHTML = `
-      <span class="nav-panel__queue-title">先把学过的东西收进去</span>
-      <span class="nav-panel__queue-meta">收藏留住重点节点，学习笔记收最近摘录。</span>
+      <span class="nav-panel__queue-title">Capture what you've learned</span>
+      <span class="nav-panel__queue-meta">Favorites keep key nodes; study notes capture recent excerpts.</span>
       <div class="nav-panel__queue-grid">
         <div class="nav-panel__queue-metric">
-          <span class="nav-panel__queue-label">收藏</span>
+          <span class="nav-panel__queue-label">Favorites</span>
           <span class="nav-panel__queue-value">${summary.favorite_count}</span>
         </div>
         <div class="nav-panel__queue-metric">
-          <span class="nav-panel__queue-label">笔记</span>
+          <span class="nav-panel__queue-label">Notes</span>
           <span class="nav-panel__queue-value">${summary.note_count}</span>
         </div>
       </div>
@@ -1353,7 +1353,7 @@
         const button = document.createElement("button");
         button.type = "button";
         button.className = "nav-panel__queue-pill";
-        button.textContent = item.kind === "note" ? `笔记 · ${item.label}` : `收藏 · ${item.label}`;
+        button.textContent = item.kind === "note" ? `Note · ${item.label}` : `Favorite · ${item.label}`;
         button.title = item.text || item.label;
         button.addEventListener("click", () => {
           focusNode(item.node_id);
@@ -1364,7 +1364,7 @@
     } else {
       const empty = document.createElement("span");
       empty.className = "nav-panel__queue-pill";
-      empty.textContent = "最近条目会显示在这里";
+      empty.textContent = "Recent items will appear here";
       list.appendChild(empty);
     }
     navQueue.appendChild(card);
@@ -1372,10 +1372,10 @@
 
   function renderSearchScope(activeCommunity) {
     if (!navSearchHint) return;
-    const modeLabel = ({ path: "路径视图", community: "社区视图", global: "全局视图" })[state.learning.activeMode] || "全局视图";
+    const modeLabel = ({ path: "Path view", community: "Community view", global: "Global view" })[state.learning.activeMode] || "Global view";
     const communityLabel = activeCommunity && state.learning.activeMode !== "global" ? ` · ${activeCommunity.label || activeCommunity.id}` : "";
-    const focusLabel = ({ all: "完整范围", core: "核心节点", one_hop: "一级关联", high_confidence: "高置信度" })[state.learning.focusMode] || "完整范围";
-    navSearchHint.textContent = `当前搜索范围：${modeLabel}${communityLabel} · ${focusLabel}`;
+    const focusLabel = ({ all: "Full scope", core: "Core nodes", one_hop: "One-hop", high_confidence: "High confidence" })[state.learning.focusMode] || "Full scope";
+    navSearchHint.textContent = `Search scope: ${modeLabel}${communityLabel} · ${focusLabel}`;
     if (navSearchEmpty) navSearchEmpty.hidden = !!state.learning.searchQuery;
   }
 
@@ -1389,10 +1389,10 @@
     button.setAttribute("data-on", state.ui.secondaryOpen ? "1" : "0");
     button.innerHTML = `
       <span class="nav-panel__secondary-row">
-        <span class="nav-panel__secondary-title">洞察 / 图例 / 小地图</span>
-        <span class="nav-panel__secondary-badge">二级入口</span>
+        <span class="nav-panel__secondary-title">Insights / Legend / Minimap</span>
+        <span class="nav-panel__secondary-badge">Secondary</span>
       </span>
-      <span class="nav-panel__secondary-meta">统一收在一个面板里，默认不再常驻抢屏。</span>
+      <span class="nav-panel__secondary-meta">Consolidated into one panel; no longer pinned by default.</span>
     `;
     button.addEventListener("click", () => setSecondaryOpen(!state.ui.secondaryOpen));
     navSecondaryEntry.appendChild(button);
@@ -1417,7 +1417,7 @@
     if (navInlineHint) {
       if (selectedCommunityId && topCommunityIds.indexOf(selectedCommunityId) === -1) {
         navInlineHint.hidden = false;
-        navInlineHint.textContent = "当前节点属于未展示社区，左侧仍保持当前社区上下文。";
+        navInlineHint.textContent = "Current node belongs to a hidden community; left sidebar keeps the active community context.";
       } else {
         navInlineHint.hidden = true;
         navInlineHint.textContent = "";
@@ -1435,7 +1435,7 @@
     if (!visibleCommunities.length) {
       const empty = document.createElement("div");
       empty.className = "nav-panel__empty";
-      empty.textContent = "暂无社区信息。";
+      empty.textContent = "No community info available.";
       navCommunities.appendChild(empty);
     }
 
@@ -1457,7 +1457,7 @@
     if (!activeCommunity) {
       const empty = document.createElement("div");
       empty.className = "nav-panel__empty";
-      empty.textContent = "暂无推荐起点。";
+      empty.textContent = "No recommended starting point.";
       navStart.appendChild(empty);
       return;
     }
@@ -1467,20 +1467,20 @@
     if (!startNode) {
       const empty = document.createElement("div");
       empty.className = "nav-panel__empty";
-      empty.textContent = "当前社区暂无推荐起点。";
+      empty.textContent = "No recommended starting point for this community.";
       navStart.appendChild(empty);
       return;
     }
 
     const reasonLabel = state.learning.activeMode === "global"
-      ? "全局辅助起点"
-      : `${activeCommunity.label || activeCommunity.id} · 辅助起点`;
+      ? "Global suggested start"
+      : `${activeCommunity.label || activeCommunity.id} · Suggested start`;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "nav-start-item";
     button.setAttribute("data-on", state.selected === startNode.id ? "1" : "0");
     button.innerHTML = `
-      <span class="nav-start-item__eyebrow">从这里开始</span>
+      <span class="nav-start-item__eyebrow">Start here</span>
       <span class="nav-start-item__title">${escapeHtml(startNode.label || startNode.id)}</span>
       <span class="nav-start-item__meta">${escapeHtml(reasonLabel)}</span>
     `;
@@ -1684,45 +1684,45 @@
 
     const sections = [
       {
-        title: "惊人连接",
+        title: "Surprising connections",
         items: state.insights.surprising_connections,
         render(item) {
           return {
             title: `${item.from} ↔ ${item.to}`,
-            meta: `跨社区强边 · 权重 ${clampWeight(item.weight).toFixed(2)}`,
+            meta: `Cross-community strong edge · weight ${clampWeight(item.weight).toFixed(2)}`,
             onClick() { focusNode(item.from); }
           };
         }
       },
       {
-        title: "知识缺口",
+        title: "Knowledge gaps",
         items: state.insights.isolated_nodes,
         render(item) {
           return {
             title: item.label || item.id,
-            meta: `孤立节点 · 度数 ${item.degree}`,
+            meta: `Isolated node · degree ${item.degree}`,
             onClick() { focusNode(item.id); }
           };
         }
       },
       {
-        title: "桥节点",
+        title: "Bridge nodes",
         items: state.insights.bridge_nodes,
         render(item) {
           return {
             title: item.label || item.id,
-            meta: `连接 ${item.community_count} 个社区`,
+            meta: `Connects ${item.community_count} communities`,
             onClick() { focusNode(item.id); }
           };
         }
       },
       {
-        title: "稀疏社区",
+        title: "Sparse communities",
         items: state.insights.sparse_communities,
         render(item) {
           return {
             title: item.label || item.id,
-            meta: `密度 ${Number(item.density || 0).toFixed(2)} · ${item.node_count} 个节点`,
+            meta: `Density ${Number(item.density || 0).toFixed(2)} · ${item.node_count} nodes`,
             onClick() { focusNode(item.id); }
           };
         }
@@ -1731,7 +1731,7 @@
 
     const totalItems = sections.reduce((sum, section) => sum + section.items.length, 0);
     const degraded = state.insights.meta && state.insights.meta.degraded === true;
-    insightsMeta.textContent = degraded ? `${totalItems} 项 · 已降级` : `${totalItems} 项`;
+    insightsMeta.textContent = degraded ? `${totalItems} items · degraded` : `${totalItems} items`;
     insightsBody.innerHTML = "";
 
     sections.forEach(section => {
@@ -1742,7 +1742,7 @@
       if (!section.items.length) {
         const empty = document.createElement("div");
         empty.className = "insights-panel__empty";
-        empty.textContent = "暂无。";
+        empty.textContent = "None.";
         wrap.appendChild(empty);
         insightsBody.appendChild(wrap);
         return;
@@ -1774,7 +1774,7 @@
 
     function render() {
       if (!results.length) {
-        dd.innerHTML = `<div style="padding:10px; color: var(--paper-ink-faint); font-family: var(--font-hand);">无匹配</div>`;
+        dd.innerHTML = `<div style="padding:10px; color: var(--paper-ink-faint); font-family: var(--font-hand);">No matches</div>`;
         dd.setAttribute("data-open", state.learning.searchQuery ? "1" : "0");
         return;
       }
@@ -1900,7 +1900,7 @@
   document.getElementById("btn-fit").addEventListener("click", fitToView);
   document.getElementById("btn-refit").addEventListener("click", () => {
     simulation.alpha(0.9).restart();
-    toast("重新布置中...");
+    toast("Re-laying out...");
   });
 
   document.getElementById("dr-close").addEventListener("click", closeDrawer);
@@ -1909,7 +1909,7 @@
     if (!minimapEl || !minimapToggle) return;
     minimapEl.setAttribute("data-collapsed", collapsed ? "1" : "0");
     minimapToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    minimapToggle.setAttribute("aria-label", collapsed ? "展开小地图" : "折叠小地图");
+    minimapToggle.setAttribute("aria-label", collapsed ? "Expand minimap" : "Collapse minimap");
   }
 
   function applyNeighborsCollapsed(collapsed) {

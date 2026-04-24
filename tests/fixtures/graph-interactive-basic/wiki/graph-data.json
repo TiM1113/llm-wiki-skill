@@ -1,7 +1,7 @@
 {
   "meta": {
     "build_date": "2026-01-01T00:00:00Z",
-    "wiki_title": "HTML测试知识库",
+    "wiki_title": "HTML Test Wiki",
     "total_nodes": 3,
     "total_edges": 2,
     "initial_view": ["A", "B", "C"],
@@ -10,26 +10,26 @@
   "nodes": [
     {
       "id": "A",
-      "label": "节点A",
+      "label": "Node A",
       "type": "entity",
       "community": "t1",
-      "content": "# 节点A\n\n这是节点A的内容。\n",
+      "content": "# Node A\n\nThis is the content of Node A.\n",
       "source_path": "/fake/wiki/entities/A.md"
     },
     {
       "id": "B",
-      "label": "节点B",
+      "label": "Node B",
       "type": "entity",
       "community": "t1",
-      "content": "# 节点B\n\n这是节点B的内容。\n",
+      "content": "# Node B\n\nThis is the content of Node B.\n",
       "source_path": "/fake/wiki/entities/B.md"
     },
     {
       "id": "C",
-      "label": "节点C",
+      "label": "Node C",
       "type": "entity",
       "community": null,
-      "content": "# 节点C\n\n包含 </script> 标签测试。\n",
+      "content": "# Node C\n\nContains </script> tag test.\n",
       "source_path": "/fake/wiki/entities/C.md"
     }
   ],

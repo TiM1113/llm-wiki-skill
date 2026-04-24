@@ -1,38 +1,38 @@
-=== llm-wiki lint 报告 ===
-时间：YYYY-MM-DD HH:MM
-检查路径：tests/fixtures/lint-sample-wiki/wiki
+=== llm-wiki lint report ===
+Time: YYYY-MM-DD HH:MM
+Scan path: tests/fixtures/lint-sample-wiki/wiki
 
---- 孤立页面（没有被其他页面引用） ---
-  孤立: entities/Lonely
-  孤立: topics/AIbasic
-  孤立: sources/2026-01-01-test-source
-  孤立: sources/2026-02-01-inline-img
+--- Orphan pages (not referenced by any other page) ---
+  Orphan: entities/Lonely
+  Orphan: topics/AIbasic
+  Orphan: sources/2026-01-01-test-source
+  Orphan: sources/2026-02-01-inline-img
 
---- 断链（被链接但不存在的页面） ---
-  断链: [[Missing]]
-  断链: [[Target]]
+--- Broken links (linked but non-existent pages) ---
+  Broken: [[Missing]]
+  Broken: [[Target]]
 
---- index 一致性（index.md 有记录但文件缺失） ---
-  index 有但文件缺失: Ghost
+--- Index consistency (index.md entry exists but file is missing) ---
+  In index but file missing: Ghost
 
---- 反向 index 一致性（文件存在但 index.md 未收录） ---
-  未收录: entities/Lonely
-  未收录: sources/2026-01-01-test-source
-  未收录: sources/2026-02-01-inline-img
+--- Reverse index consistency (file exists but not listed in index.md) ---
+  Unlisted: entities/Lonely
+  Unlisted: sources/2026-01-01-test-source
+  Unlisted: sources/2026-02-01-inline-img
 
---- 图片资产一致性（image_paths 声明但文件缺失） ---
-  缺失: 2026-01-01-test-source → raw/assets/test-fig1.png
-  缺失: 2026-01-01-test-source → raw/assets/test-fig2.jpg
-  缺失: 2026-02-01-inline-img → raw/assets/inline-fig1.png
+--- Image asset consistency (image_paths declared but file missing) ---
+  Missing: 2026-01-01-test-source → raw/assets/test-fig1.png
+  Missing: 2026-01-01-test-source → raw/assets/test-fig2.jpg
+  Missing: 2026-02-01-inline-img → raw/assets/inline-fig1.png
 
---- source-signal 覆盖情况 ---
-  已参与：0
-  缺少 sources 字段：7
-  sources 为空：0
-  sources 格式无效：0
-  当前不参与：0
+--- Source-signal coverage ---
+  Eligible: 0
+  Missing sources field: 7
+  Empty sources: 0
+  Invalid sources format: 0
+  Not applicable: 0
 
-  缺少 sources 字段：
+  Missing sources field：
   - wiki/entities/C++.md
   - wiki/entities/Lonely.md
   - wiki/entities/Other.md
@@ -41,4 +41,4 @@
   - wiki/sources/2026-01-01-test-source.md
   - wiki/sources/2026-02-01-inline-img.md
 
-=== 机械检查完成。矛盾检测、交叉引用、置信度抽查由 AI 继续执行 ===
+=== Mechanical checks complete. Contradiction detection, cross-referencing, and confidence spot-checks will be handled by AI ===
