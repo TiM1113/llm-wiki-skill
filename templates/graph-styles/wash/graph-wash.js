@@ -9,7 +9,11 @@
     console.error("[wiki] graph-wash-helpers.js is missing or failed to load");
     return;
   }
-  const { truncateLabel, cardDims, createSafeStorage, defaultLearning, normalizeLearning, resolveInitialMode, getCommunityNodeIds, getVisibleNodeIds, getVisibleLinks, shouldAutoOpenDrawer } = helpers;
+  const { truncateLabel, cardDims, createSafeStorage, getWikiStorageNamespace, defaultQueue, normalizeQueue, toggleQueueFavorite, appendQueueNote, summarizeQueue, defaultLearning, normalizeLearning, resolveInitialMode, getCommunityNodeIds, getVisibleNodeIds, getVisibleLinks, buildSearchIndex, filterLinksByTypes, resolveVisibleSnapshot, shouldAutoOpenDrawer } = helpers;
+
+  const NAV_BREAKPOINT = 1180;
+  const NOTE_EXCERPT_LIMIT = 140;
+  const QUEUE_NOTE_LIMIT = 50;
 
   const dataEl = document.getElementById("graph-data");
   let DATA;
@@ -27,10 +31,20 @@
   const drawerNeighborsHeading = drawerNeighbors ? drawerNeighbors.querySelector("h4") : null;
   const insightsBody = document.getElementById("insights-body");
   const insightsMeta = document.getElementById("insights-meta");
+  const secondaryPanel = document.getElementById("secondary-panel");
+  const secondaryToggle = document.getElementById("secondary-toggle");
+  const secondaryClose = document.getElementById("secondary-close");
   const navPanel = document.getElementById("nav-panel");
   const navCommunities = document.getElementById("nav-communities");
+  const navAllCommunities = document.getElementById("nav-all-communities");
+  const navAllCommunitiesToggle = document.getElementById("nav-all-communities-toggle");
+  const navFocus = document.getElementById("nav-focus");
+  const navQueue = document.getElementById("nav-queue");
   const navStart = document.getElementById("nav-start");
+  const navSecondaryEntry = document.getElementById("nav-secondary-entry");
   const navInlineHint = document.getElementById("nav-inline-hint");
+  const navSearchHint = document.getElementById("nav-search-hint");
+  const navSearchEmpty = document.getElementById("nav-search-empty");
   const navToggle = document.getElementById("nav-toggle");
   const navClose = document.getElementById("nav-close");
 
@@ -41,7 +55,6 @@
     hover: null,
     nodes: [],
     links: [],
-    visibleLinks: [],
     communities: {},
     insights: {
       surprising_connections: [],
@@ -61,17 +74,24 @@
       activeCommunityId: null,
       recommendedStartNodeId: null,
       pathDegraded: false,
-      communityDegraded: false
+      communityDegraded: false,
+      focusMode: "all",
+      searchQuery: ""
     },
     visible: {
+      ready: false,
       nodeIds: new Set(),
       nodes: [],
       links: [],
       searchIndex: []
     },
+    queue: defaultQueue(),
     ui: {
       bootstrappedEntry: false,
       navOpen: false,
+      navCollapsed: false,
+      allCommunitiesExpanded: false,
+      secondaryOpen: false,
       topCommunityIds: []
     }
   };
@@ -81,6 +101,55 @@
     rawLocalStorage = window.localStorage;
   } catch (_) {}
   const safeLocalStorage = createSafeStorage(rawLocalStorage, console.warn);
+  const storageNamespace = getWikiStorageNamespace(DATA.meta, window.location && window.location.pathname);
+
+  function queueStorageKey(name) {
+    return storageNamespace + ":" + name;
+  }
+
+  function loadQueueState() {
+    const raw = safeLocalStorage.get(queueStorageKey("queue"));
+    if (!raw) return defaultQueue();
+    try {
+      return normalizeQueue(JSON.parse(raw));
+    } catch (err) {
+      console.warn("[wiki] queue storage parse failed:", err);
+      return defaultQueue();
+    }
+  }
+
+  function persistQueueState() {
+    safeLocalStorage.set(queueStorageKey("queue"), JSON.stringify(state.queue));
+  }
+
+  function isFavoriteNode(nodeId) {
+    return state.queue.favorites.indexOf(String(nodeId)) !== -1;
+  }
+
+  function buildNoteText(node, selectedText) {
+    const pickedText = typeof selectedText === "string" ? selectedText.trim() : "";
+    if (pickedText) return pickedText;
+    const raw = String((node && node.content) || "")
+      .replace(/^#\s+/gm, "")
+      .replace(/\[\[([^\]]+)\]\]/g, "$1")
+      .replace(/\s+/g, " ")
+      .trim();
+    const excerpt = raw.slice(0, NOTE_EXCERPT_LIMIT);
+    return node && node.label ? `${node.label}${excerpt ? "：" + excerpt : ""}` : excerpt;
+  }
+
+  function createQueueNote(node, selectedText) {
+    const createdAt = new Date().toISOString();
+    return {
+      id: `${node.id}:${Date.now()}`,
+      node_id: node.id,
+      label: node.label || node.id,
+      text: buildNoteText(node, selectedText),
+      created_at: createdAt
+    };
+  }
+
+  state.queue = loadQueueState();
 
   // ---------- tokens (variants) ----------
   const VARIANTS = {
@@ -203,10 +272,7 @@
       n.commColor = commMap[c].color;
     });
 
-    state.searchIndex = state.nodes.map(n => ({
-      node: n,
-      haystack: `${(n.label || n.id || "").toLowerCase()}\n${(n.content || "").slice(0, 500).toLowerCase()}`
-    }));
+    state.searchIndex = buildSearchIndex(state.nodes);
   }
 
   // ---------- Node geometry ----------
@@ -491,7 +557,9 @@
 
   // ---------- Tick: redraw ----------
   function visibleLinks() {
-    return state.links.filter(l => state.filters[l.type || "EXTRACTED"]);
+    return state.visible.ready
+      ? state.visible.links
+      : filterLinksByTypes(state.links, state.filters);
   }
 
   function renderEdges() {
@@ -499,8 +567,6 @@
       .slice()
       .sort((left, right) => clampWeight(right.weight) - clampWeight(left.weight));
     vis.forEach((edge, index) => { edge._blurRank = index; });
-    state.visibleLinks = vis;
-
     const groups = edgeLayer.selectAll("g.edge-wrap")
       .data(vis, d => d.id);
     groups.exit().remove();
@@ -927,6 +993,13 @@
         state.learning.activeCommunityId = nodeCommunityId;
       }
     }
+    if (state.learning.focusMode === "one_hop") {
+      updateVisibleSnapshot();
+      renderEdges();
+      applySubgraph();
+      updateFooter();
+      renderMinimap();
+    }
     applyHighlight();
     pulseNode(id);
     renderNavPanel();
@@ -944,6 +1017,35 @@
 
   function cssEscape(s) { return String(s).replace(/"/g, '\\"'); }
 
+  function updateQueueUI() {
+    persistQueueState();
+    renderNavPanel();
+  }
+
+  function handleFavoriteToggle(node) {
+    if (!node) return;
+    state.queue = toggleQueueFavorite(state.queue, node.id);
+    const active = isFavoriteNode(node.id);
+    toast(active ? "Added to favorites" : "Removed from favorites");
+    updateQueueUI();
+    if (state.selected === node.id) openDetailDrawer(node.id);
+  }
+
+  function handleAddNote(node) {
+    if (!node) return;
+    const body = document.getElementById("dr-body");
+    const selection = typeof window.getSelection === "function" ? window.getSelection() : null;
+    const selectedText = selection ? String(selection).trim() : "";
+    const scopedSelectedText = body && selection && selection.rangeCount && body.contains(selection.anchorNode)
+      ? selectedText
+      : "";
+    const note = createQueueNote(node, scopedSelectedText);
+    state.queue = appendQueueNote(state.queue, note, QUEUE_NOTE_LIMIT);
+    toast(scopedSelectedText ? "Saved to study notes" : "Noted current node");
+    updateQueueUI();
+    if (state.selected === node.id) openDetailDrawer(node.id);
+  }
+
   function openDetailDrawer(id) {
     const n = state.byId[id];
     if (!n) return;
@@ -951,21 +1053,34 @@
     document.getElementById("drawer").setAttribute("aria-hidden", "false");
 
     document.getElementById("dr-kicker").textContent = ({
-      entity: "Entity · 实体",
-      topic: "Topic · 主题",
-      source: "Source · 来源"
+      entity: "Entity",
+      topic: "Topic",
+      source: "Source"
     })[n.type] || n.type;
 
     document.getElementById("dr-title").textContent = n.label || n.id;
 
     const commEl = document.getElementById("dr-community");
     if (n.community != null) {
-      commEl.textContent = "社区 · " + n.community;
+      commEl.textContent = "Community · " + n.community;
       commEl.hidden = false;
     } else {
       commEl.hidden = true;
     }
-    document.getElementById("dr-degree").textContent = `${n.degree} 条关联`;
+    document.getElementById("dr-degree").textContent = `${n.degree} connections`;
+
+    const favoriteButton = document.getElementById("dr-favorite");
+    if (favoriteButton) {
+      const favorited = isFavoriteNode(n.id);
+      favoriteButton.setAttribute("data-on", favorited ? "1" : "0");
+      favoriteButton.textContent = favorited ? "★ Favorited" : "☆ Favorite";
+      favoriteButton.onclick = () => handleFavoriteToggle(n);
+    }
+    const noteButton = document.getElementById("dr-note");
+    if (noteButton) {
+      noteButton.setAttribute("data-on", "0");
+      noteButton.onclick = () => handleAddNote(n);
+    }
 
     // body
     const body = document.getElementById("dr-body");
@@ -1011,7 +1126,7 @@
     const nb = document.getElementById("nb-list");
     nb.innerHTML = "";
     if (!neighbors.length) {
-      nb.innerHTML = `<div style="color:var(--paper-ink-faint); font-family: var(--font-hand); padding: 10px;">（孤立节点）</div>`;
+      nb.innerHTML = `<div style="color:var(--paper-ink-faint); font-family: var(--font-hand); padding: 10px;">(Isolated node)</div>`;
     }
     neighbors.forEach(o => {
       if (!o.other) return;
@@ -1032,7 +1147,6 @@
       nb.appendChild(el);
     });
 
-    renderDrawerLearning(id);
   }
 
   function closeDrawer() {
@@ -1088,6 +1202,13 @@
     return state.learning.data.entry && state.learning.data.entry.recommended_start_node_id;
   }
 
+  function getContextRecommendedStartNodeId(community) {
+    if (state.learning.activeMode === "global") {
+      return state.learning.data.entry && state.learning.data.entry.recommended_start_node_id;
+    }
+    return getRecommendedStartNodeId(community);
+  }
+
   function getPathNodeIdsForCommunity(community) {
     if (!community) return [];
     const startNodeId = getRecommendedStartNodeId(community);
@@ -1121,7 +1242,7 @@
   function updateInsightsTitle() {
     const panelTitle = document.getElementById("panel-title");
     if (!panelTitle) return;
-    panelTitle.textContent = state.learning.activeMode === "global" ? "Insights" : "洞察";
+    panelTitle.textContent = state.learning.activeMode === "global" ? "Insights" : "Insights";
   }
 
   function setNavOpen(open) {
@@ -1131,11 +1252,158 @@
     if (navToggle) navToggle.setAttribute("aria-expanded", open ? "true" : "false");
   }
 
+  function setNavCollapsed(collapsed) {
+    state.ui.navCollapsed = collapsed;
+    const app = document.getElementById("app");
+    if (app) app.classList.toggle("nav-collapsed", !!collapsed && window.innerWidth >= NAV_BREAKPOINT);
+    if (navClose) navClose.setAttribute("aria-label", collapsed ? "Expand learning nav" : "Collapse learning nav");
+  }
+
+  function setSecondaryOpen(open) {
+    state.ui.secondaryOpen = open;
+    if (secondaryPanel) secondaryPanel.hidden = !open;
+    if (secondaryToggle) secondaryToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function renderCommunityButton(community, activeCommunity, selectedCommunityId) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "nav-community";
+    button.style.borderLeftColor = state.communities[String(community.id)] ? state.communities[String(community.id)].color : "var(--paper-rule)";
+    const isActive = state.learning.activeMode !== "global" && activeCommunity && community.id === activeCommunity.id;
+    button.setAttribute("data-on", isActive ? "1" : "0");
+    button.innerHTML = `
+      <span class="nav-community__row">
+        <span class="nav-community__title">${escapeHtml(community.label || community.id)}</span>
+        ${community.is_primary ? '<span class="nav-community__badge">TOP</span>' : ""}
+        ${selectedCommunityId === String(community.id) && !isActive ? '<span class="nav-community__badge">Current</span>' : ""}
+      </span>
+      <span class="nav-community__meta">${community.node_count || 0} nodes · ${community.source_count || 0} sources</span>
+    `;
+    button.addEventListener("click", () => {
+      setActiveCommunity(community.id);
+      if (window.innerWidth < NAV_BREAKPOINT) setNavOpen(false);
+    });
+    return button;
+  }
+
+  function renderFocusOptions(activeCommunity) {
+    if (!navFocus) return;
+    navFocus.innerHTML = "";
+
+    const options = [
+      { id: "all", title: "Show all", meta: activeCommunity ? `Show full scope of "${escapeHtml(activeCommunity.label || activeCommunity.id)}"` : "Show full global scope" },
+      { id: "core", title: "Core nodes only", meta: activeCommunity ? `Keep key nodes around "${escapeHtml(activeCommunity.label || activeCommunity.id)}"` : "Prioritize strongest-connected nodes globally" },
+      { id: "one_hop", title: "One-hop only", meta: state.selected ? "Show one-hop neighbors of current selection" : "Show one-hop neighbors of recommended start" },
+      { id: "high_confidence", title: "High confidence only", meta: "Keep only high-weight connections and related nodes" }
+    ];
+
+    options.forEach((option) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "nav-panel__secondary";
+      item.setAttribute("data-on", state.learning.focusMode === option.id ? "1" : "0");
+      item.innerHTML = `
+        <span class="nav-panel__secondary-row">
+          <span class="nav-panel__secondary-title">${option.title}</span>
+          <span class="nav-panel__secondary-badge">${state.learning.focusMode === option.id ? "Current" : "Focus"}</span>
+        </span>
+        <span class="nav-panel__secondary-meta">${option.meta}</span>
+      `;
+      item.addEventListener("click", () => {
+        state.learning.focusMode = option.id;
+        updateVisibleSnapshot();
+        renderEdges();
+        applySubgraph();
+        syncDrawerWithVisibleSnapshot();
+        updateFooter();
+        renderNavPanel();
+        renderMinimap();
+        simulation.alpha(0.2).restart();
+      });
+      navFocus.appendChild(item);
+    });
+  }
+
+  function renderQueueSummary() {
+    if (!navQueue) return;
+    navQueue.innerHTML = "";
+
+    const summary = summarizeQueue(state.queue, state.byId, 4);
+    const card = document.createElement("div");
+    card.className = "nav-panel__queue-card";
+    card.innerHTML = `
+      <span class="nav-panel__queue-title">Capture what you've learned</span>
+      <span class="nav-panel__queue-meta">Favorites keep key nodes; study notes capture recent excerpts.</span>
+      <div class="nav-panel__queue-grid">
+        <div class="nav-panel__queue-metric">
+          <span class="nav-panel__queue-label">Favorites</span>
+          <span class="nav-panel__queue-value">${summary.favorite_count}</span>
+        </div>
+        <div class="nav-panel__queue-metric">
+          <span class="nav-panel__queue-label">Notes</span>
+          <span class="nav-panel__queue-value">${summary.note_count}</span>
+        </div>
+      </div>
+      <div class="nav-panel__queue-list"></div>
+    `;
+    const list = card.querySelector(".nav-panel__queue-list");
+    if (summary.recent_items.length) {
+      summary.recent_items.forEach((item) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "nav-panel__queue-pill";
+        button.textContent = item.kind === "note" ? `Note · ${item.label}` : `Favorite · ${item.label}`;
+        button.title = item.text || item.label;
+        button.addEventListener("click", () => {
+          focusNode(item.node_id);
+          if (window.innerWidth < NAV_BREAKPOINT) setNavOpen(false);
+        });
+        list.appendChild(button);
+      });
+    } else {
+      const empty = document.createElement("span");
+      empty.className = "nav-panel__queue-pill";
+      empty.textContent = "Recent items will appear here";
+      list.appendChild(empty);
+    }
+    navQueue.appendChild(card);
+  }
+
+  function renderSearchScope(activeCommunity) {
+    if (!navSearchHint) return;
+    const modeLabel = ({ path: "Path view", community: "Community view", global: "Global view" })[state.learning.activeMode] || "Global view";
+    const communityLabel = activeCommunity && state.learning.activeMode !== "global" ? ` · ${activeCommunity.label || activeCommunity.id}` : "";
+    const focusLabel = ({ all: "Full scope", core: "Core nodes", one_hop: "One-hop", high_confidence: "High confidence" })[state.learning.focusMode] || "Full scope";
+    navSearchHint.textContent = `Search scope: ${modeLabel}${communityLabel} · ${focusLabel}`;
+    if (navSearchEmpty) navSearchEmpty.hidden = !!state.learning.searchQuery;
+  }
+
+  function renderSecondaryEntry() {
+    if (!navSecondaryEntry) return;
+    navSecondaryEntry.innerHTML = "";
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "nav-panel__secondary";
+    button.setAttribute("data-on", state.ui.secondaryOpen ? "1" : "0");
+    button.innerHTML = `
+      <span class="nav-panel__secondary-row">
+        <span class="nav-panel__secondary-title">Insights / Legend / Minimap</span>
+        <span class="nav-panel__secondary-badge">Secondary</span>
+      </span>
+      <span class="nav-panel__secondary-meta">Consolidated into one panel; no longer pinned by default.</span>
+    `;
+    button.addEventListener("click", () => setSecondaryOpen(!state.ui.secondaryOpen));
+    navSecondaryEntry.appendChild(button);
+  }
+
   function renderNavPanel() {
     if (!navCommunities || !navStart) return;
 
     const sortedCommunities = getSortedCommunities();
     const visibleCommunities = sortedCommunities.slice(0, 3);
+    const restCommunities = sortedCommunities.slice(3);
     const activeCommunity = getActiveCommunity();
     const selectedNode = state.selected ? state.byId[state.selected] : null;
     const selectedCommunityId = selectedNode && selectedNode.community != null ? String(selectedNode.community) : null;
@@ -1143,76 +1411,88 @@
     state.ui.topCommunityIds = topCommunityIds;
 
     navCommunities.innerHTML = "";
+    if (navAllCommunities) navAllCommunities.innerHTML = "";
     navStart.innerHTML = "";
 
     if (navInlineHint) {
       if (selectedCommunityId && topCommunityIds.indexOf(selectedCommunityId) === -1) {
         navInlineHint.hidden = false;
-        navInlineHint.textContent = "当前节点属于未展示社区，左侧仍保持当前社区上下文。";
+        navInlineHint.textContent = "Current node belongs to a hidden community; left sidebar keeps the active community context.";
       } else {
         navInlineHint.hidden = true;
         navInlineHint.textContent = "";
       }
     }
 
+    if (navAllCommunitiesToggle) {
+      const hasRest = restCommunities.length > 0;
+      navAllCommunitiesToggle.hidden = !hasRest;
+      navAllCommunitiesToggle.setAttribute("aria-expanded", state.ui.allCommunitiesExpanded ? "true" : "false");
+      navAllCommunitiesToggle.textContent = state.ui.allCommunitiesExpanded ? "⌃" : "⌄";
+    }
+    if (navAllCommunities) navAllCommunities.hidden = !state.ui.allCommunitiesExpanded;
+
     if (!visibleCommunities.length) {
       const empty = document.createElement("div");
       empty.className = "nav-panel__empty";
-      empty.textContent = "暂无社区信息。";
+      empty.textContent = "No community info available.";
       navCommunities.appendChild(empty);
     }
 
     visibleCommunities.forEach((community) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "nav-community";
-      button.style.borderLeftColor = state.communities[String(community.id)] ? state.communities[String(community.id)].color : "var(--paper-rule)";
-      button.setAttribute("data-on", state.learning.activeMode !== "global" && activeCommunity && community.id === activeCommunity.id ? "1" : "0");
-      button.innerHTML = `
-        <span class="nav-community__row">
-          <span class="nav-community__title">${escapeHtml(community.label || community.id)}</span>
-          ${community.is_primary ? '<span class="nav-community__badge">TOP</span>' : ""}
-        </span>
-        <span class="nav-community__meta">${community.node_count || 0} 个节点 · ${community.source_count || 0} 个来源</span>
-      `;
-      button.addEventListener("click", () => {
-        setActiveCommunity(community.id);
-        setNavOpen(false);
-      });
-      navCommunities.appendChild(button);
+      navCommunities.appendChild(renderCommunityButton(community, activeCommunity, selectedCommunityId));
     });
+
+    if (navAllCommunities && state.ui.allCommunitiesExpanded) {
+      restCommunities.forEach((community) => {
+        navAllCommunities.appendChild(renderCommunityButton(community, activeCommunity, selectedCommunityId));
+      });
+    }
+
+    renderFocusOptions(activeCommunity);
+    renderQueueSummary();
+    renderSearchScope(activeCommunity);
+    renderSecondaryEntry();
 
     if (!activeCommunity) {
       const empty = document.createElement("div");
       empty.className = "nav-panel__empty";
-      empty.textContent = "暂无推荐起点。";
+      empty.textContent = "No recommended starting point.";
       navStart.appendChild(empty);
       return;
     }
 
-    const startNodeId = getRecommendedStartNodeId(activeCommunity);
+    const startNodeId = getContextRecommendedStartNodeId(activeCommunity);
     const startNode = startNodeId ? state.byId[startNodeId] : null;
     if (!startNode) {
       const empty = document.createElement("div");
       empty.className = "nav-panel__empty";
-      empty.textContent = "当前社区暂无推荐起点。";
+      empty.textContent = "No recommended starting point for this community.";
       navStart.appendChild(empty);
       return;
     }
 
+    const reasonLabel = state.learning.activeMode === "global"
+      ? "Global suggested start"
+      : `${activeCommunity.label || activeCommunity.id} · Suggested start`;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "nav-start-item";
     button.setAttribute("data-on", state.selected === startNode.id ? "1" : "0");
     button.innerHTML = `
+      <span class="nav-start-item__eyebrow">Start here</span>
       <span class="nav-start-item__title">${escapeHtml(startNode.label || startNode.id)}</span>
-      <span class="nav-start-item__meta">${escapeHtml(activeCommunity.label || activeCommunity.id)} · 推荐起点</span>
+      <span class="nav-start-item__meta">${escapeHtml(reasonLabel)}</span>
     `;
     button.addEventListener("click", () => {
-      if (state.learning.activeCommunityId !== activeCommunity.id) state.learning.activeCommunityId = activeCommunity.id;
-      setLearningMode("path");
-      focusNode(startNode.id);
-      setNavOpen(false);
+      if (state.learning.activeMode === "global") {
+        focusNode(startNode.id);
+      } else {
+        if (state.learning.activeCommunityId !== activeCommunity.id) state.learning.activeCommunityId = activeCommunity.id;
+        setLearningMode("path");
+        focusNode(startNode.id);
+      }
+      if (window.innerWidth < NAV_BREAKPOINT) setNavOpen(false);
     });
     navStart.appendChild(button);
   }
@@ -1220,37 +1500,56 @@
   // ---------- Learning mode ----------
   function updateVisibleSnapshot() {
     const mode = state.learning.activeMode;
-    let ids = [];
+    const activeCommunity = getActiveCommunity();
+    let baseNodeIds = [];
 
     if (mode === "community") {
-      const activeCommunity = getActiveCommunity();
-      ids = activeCommunity ? getCommunityNodeIds(state.nodes, activeCommunity.id) : [];
+      baseNodeIds = activeCommunity ? getCommunityNodeIds(state.nodes, activeCommunity.id) : [];
     } else if (mode === "path") {
-      const activeCommunity = getActiveCommunity();
-      ids = activeCommunity ? getPathNodeIdsForCommunity(activeCommunity) : getVisibleNodeIds(state.learning.data, mode);
+      baseNodeIds = activeCommunity ? getPathNodeIdsForCommunity(activeCommunity) : getVisibleNodeIds(state.learning.data, mode);
     } else {
-      ids = getVisibleNodeIds(state.learning.data, mode);
+      baseNodeIds = getVisibleNodeIds(state.learning.data, mode);
     }
 
-    if (!ids.length) {
-      state.visible.nodeIds = new Set(state.nodes.map(n => n.id));
-      state.visible.nodes = state.nodes;
-      state.visible.links = state.links;
-    } else {
-      const idSet = new Set(ids);
-      state.visible.nodeIds = idSet;
-      state.visible.nodes = state.nodes.filter(n => idSet.has(n.id));
-      state.visible.links = getVisibleLinks(state.links, ids);
+    if (!baseNodeIds.length) {
+      baseNodeIds = state.nodes.map((node) => node.id);
     }
-    state.visible.searchIndex = state.visible.nodes.map(n => ({
-      node: n,
-      haystack: `${(n.label || n.id || "").toLowerCase()}\n${(n.content || "").slice(0, 500).toLowerCase()}`
-    }));
+
+    const focusAnchorNodeId = state.selected
+      || (activeCommunity && getRecommendedStartNodeId(activeCommunity))
+      || state.learning.recommendedStartNodeId
+      || null;
+    const snapshot = resolveVisibleSnapshot({
+      nodes: state.nodes,
+      links: state.links,
+      baseNodeIds,
+      filters: state.filters,
+      focusMode: state.learning.focusMode,
+      searchQuery: state.learning.searchQuery,
+      anchorNodeId: focusAnchorNodeId,
+      highConfidenceThreshold: 0.8
+    });
+
+    state.visible.ready = true;
+    state.visible.nodeIds = new Set(snapshot.node_ids);
+    state.visible.nodes = snapshot.nodes;
+    state.visible.links = snapshot.links;
+    state.visible.searchIndex = snapshot.searchIndex;
   }
 
   function applySubgraph() {
     const idSet = state.visible.nodeIds;
-    if (!idSet.size || idSet.size === state.nodes.length) {
+    if (!state.visible.ready) {
+      nodeLayer.selectAll("g.node-group").style("display", null);
+      edgeLayer.selectAll("g.edge-wrap").style("display", null);
+      return;
+    }
+    if (!idSet.size) {
+      nodeLayer.selectAll("g.node-group").style("display", "none");
+      edgeLayer.selectAll("g.edge-wrap").style("display", "none");
+      return;
+    }
+    if (idSet.size === state.nodes.length) {
       nodeLayer.selectAll("g.node-group").style("display", null);
       edgeLayer.selectAll("g.edge-wrap").style("display", null);
       return;
@@ -1266,8 +1565,8 @@
   }
 
   function syncDrawerWithVisibleSnapshot() {
-    if (!state.selected) return;
-    if (state.visible.nodeIds.size && !state.visible.nodeIds.has(state.selected)) {
+    if (!state.selected || !state.visible.ready) return;
+    if (!state.visible.nodeIds.has(state.selected)) {
       closeDrawer();
     }
   }
@@ -1281,6 +1580,7 @@
     }
 
     updateVisibleSnapshot();
+    renderEdges();
     applySubgraph();
     syncDrawerWithVisibleSnapshot();
 
@@ -1308,76 +1608,8 @@
     }
   }
 
-  function renderDrawerLearning(nodeId) {
-    const container = document.getElementById("dr-learning");
-    if (!container) return;
-
-    const mode = state.learning.activeMode;
-    const showLearning = mode && mode !== "global" && nodeId;
-    if (!showLearning) {
-      container.setAttribute("hidden", "");
-      return;
-    }
-
-    container.removeAttribute("hidden");
-    const node = state.byId[nodeId];
-    const activeCommunity = getActiveCommunity();
-
-    const whatBody = document.getElementById("dr-what-body");
-    if (whatBody) {
-      const typeLabel = ({ entity: "实体", topic: "主题", source: "来源" })[node.type] || node.type;
-      whatBody.textContent = `${node.label || node.id} 是一个${typeLabel}节点` +
-        (node.community ? `，属于「${node.community}」社区。` : "。");
-    }
-
-    const whyBody = document.getElementById("dr-why-body");
-    if (whyBody) {
-      if (mode === "path" && getRecommendedStartNodeId(activeCommunity) === nodeId) {
-        whyBody.textContent = "这是学习路径的推荐起点，拥有最多的社区内连接。";
-      } else if (mode === "path") {
-        whyBody.textContent = "这个节点在学习路径中，与起点直接关联。";
-      } else if (mode === "community" && activeCommunity) {
-        whyBody.textContent = `当前聚焦「${activeCommunity.label || activeCommunity.id}」社区。`;
-      } else {
-        whyBody.textContent = "";
-      }
-    }
-
-    const nextBody = document.getElementById("dr-next-body");
-    if (nextBody) {
-      nextBody.innerHTML = "";
-      const neighbors = [];
-      state.visible.links.forEach(l => {
-        const s = l.source.id || l.source;
-        const t = l.target.id || l.target;
-        if (s === nodeId) neighbors.push(t);
-        else if (t === nodeId) neighbors.push(s);
-      });
-      const unique = [...new Set(neighbors)].slice(0, 5);
-      if (unique.length) {
-        unique.forEach(nid => {
-          const n = state.byId[nid];
-          if (!n) return;
-          const a = document.createElement("a");
-          a.className = "wikilink";
-          a.setAttribute("data-target", nid);
-          a.textContent = n.label || nid;
-          a.addEventListener("click", (e) => {
-            e.preventDefault();
-            selectNode(nid, true);
-            svg.transition().duration(450).call(zoomBehavior.translateTo, n.x, n.y);
-          });
-          nextBody.appendChild(a);
-          nextBody.appendChild(document.createTextNode(" · "));
-        });
-      } else {
-        nextBody.textContent = "已到达当前视图的边界。";
-      }
-    }
-  }
-
   function fitVisibleToView() {
-    const visibleNodes = state.visible.nodeIds.size && state.visible.nodeIds.size < state.nodes.length
+    const visibleNodes = state.visible.ready
       ? state.nodes.filter(n => state.visible.nodeIds.has(n.id))
       : state.nodes;
     if (!visibleNodes.length) return;
@@ -1415,6 +1647,10 @@
     state.learning.recommendedStartNodeId = data.entry.recommended_start_node_id;
     state.learning.pathDegraded = data.views.path.degraded;
     state.learning.communityDegraded = data.views.community.degraded;
+    state.learning.focusMode = "all";
+    state.learning.searchQuery = "";
+    const searchEl = document.getElementById("search");
+    if (searchEl) searchEl.value = "";
 
     updateVisibleSnapshot();
 
@@ -1427,11 +1663,9 @@
     renderNavPanel();
 
     const startId = data.entry.recommended_start_node_id;
-    if (startId && state.byId[startId]) {
+    if (startId && state.byId[startId] && mode !== "global") {
       selectNode(startId, shouldAutoOpenDrawer(mode));
-      if (mode !== "global") {
-        setTimeout(() => fitVisibleToView(), 200);
-      }
+      setTimeout(() => fitVisibleToView(), 200);
     }
 
     if (mode !== "global" && state.visible.nodeIds.size < state.nodes.length) {
@@ -1450,45 +1684,45 @@
 
     const sections = [
       {
-        title: "惊人连接",
+        title: "Surprising connections",
         items: state.insights.surprising_connections,
         render(item) {
           return {
             title: `${item.from} ↔ ${item.to}`,
-            meta: `跨社区强边 · 权重 ${clampWeight(item.weight).toFixed(2)}`,
+            meta: `Cross-community strong edge · weight ${clampWeight(item.weight).toFixed(2)}`,
             onClick() { focusNode(item.from); }
           };
         }
       },
       {
-        title: "知识缺口",
+        title: "Knowledge gaps",
         items: state.insights.isolated_nodes,
         render(item) {
           return {
             title: item.label || item.id,
-            meta: `孤立节点 · 度数 ${item.degree}`,
+            meta: `Isolated node · degree ${item.degree}`,
             onClick() { focusNode(item.id); }
           };
         }
       },
       {
-        title: "桥节点",
+        title: "Bridge nodes",
         items: state.insights.bridge_nodes,
         render(item) {
           return {
             title: item.label || item.id,
-            meta: `连接 ${item.community_count} 个社区`,
+            meta: `Connects ${item.community_count} communities`,
             onClick() { focusNode(item.id); }
           };
         }
       },
       {
-        title: "稀疏社区",
+        title: "Sparse communities",
         items: state.insights.sparse_communities,
         render(item) {
           return {
             title: item.label || item.id,
-            meta: `密度 ${Number(item.density || 0).toFixed(2)} · ${item.node_count} 个节点`,
+            meta: `Density ${Number(item.density || 0).toFixed(2)} · ${item.node_count} nodes`,
             onClick() { focusNode(item.id); }
           };
         }
@@ -1497,7 +1731,7 @@
 
     const totalItems = sections.reduce((sum, section) => sum + section.items.length, 0);
     const degraded = state.insights.meta && state.insights.meta.degraded === true;
-    insightsMeta.textContent = degraded ? `${totalItems} 项 · 已降级` : `${totalItems} 项`;
+    insightsMeta.textContent = degraded ? `${totalItems} items · degraded` : `${totalItems} items`;
     insightsBody.innerHTML = "";
 
     sections.forEach(section => {
@@ -1508,7 +1742,7 @@
       if (!section.items.length) {
         const empty = document.createElement("div");
         empty.className = "insights-panel__empty";
-        empty.textContent = "暂无。";
+        empty.textContent = "None.";
         wrap.appendChild(empty);
         insightsBody.appendChild(wrap);
         return;
@@ -1540,8 +1774,8 @@
 
     function render() {
       if (!results.length) {
-        dd.innerHTML = `<div style="padding:10px; color: var(--paper-ink-faint); font-family: var(--font-hand);">无匹配</div>`;
-        dd.setAttribute("data-open", "1");
+        dd.innerHTML = `<div style="padding:10px; color: var(--paper-ink-faint); font-family: var(--font-hand);">No matches</div>`;
+        dd.setAttribute("data-open", state.learning.searchQuery ? "1" : "0");
         return;
       }
       dd.innerHTML = "";
@@ -1557,6 +1791,7 @@
         el.addEventListener("click", () => {
           input.value = n.label || n.id;
           dd.setAttribute("data-open", "0");
+          if (navSearchEmpty) navSearchEmpty.hidden = true;
           selectNode(n.id, true);
           svg.transition().duration(450).call(zoomBehavior.translateTo, n.x, n.y);
         });
@@ -1567,12 +1802,25 @@
 
     input.addEventListener("input", () => {
       const q = input.value.trim().toLowerCase();
-      if (!q) { dd.setAttribute("data-open", "0"); return; }
+      state.learning.searchQuery = q;
+      updateVisibleSnapshot();
+      renderEdges();
+      applySubgraph();
+      syncDrawerWithVisibleSnapshot();
+      updateFooter();
+      renderNavPanel();
+      renderMinimap();
+      simulation.alpha(0.18).restart();
+
       const idx = state.visible.searchIndex.length ? state.visible.searchIndex : state.searchIndex;
-      results = idx
-        .filter(entry => entry.haystack.includes(q))
-        .map(entry => entry.node);
-      activeIdx = 0;
+      results = q
+        ? idx.filter(entry => entry.haystack.includes(q)).map(entry => entry.node)
+        : [];
+      activeIdx = results.length ? 0 : -1;
+      if (!q) {
+        dd.setAttribute("data-open", "0");
+        return;
+      }
       render();
     });
     input.addEventListener("keydown", (e) => {
@@ -1589,6 +1837,14 @@
         }
       } else if (e.key === "Escape") {
         input.value = "";
+        state.learning.searchQuery = "";
+        updateVisibleSnapshot();
+        renderEdges();
+        applySubgraph();
+        syncDrawerWithVisibleSnapshot();
+        updateFooter();
+        renderNavPanel();
+        renderMinimap();
         dd.setAttribute("data-open", "0");
       }
     });
@@ -1617,8 +1873,11 @@
         const on = chip.getAttribute("data-on") !== "1";
         chip.setAttribute("data-on", on ? "1" : "0");
         state.filters[t] = on;
+        updateVisibleSnapshot();
         renderEdges();
-        // re-run sim briefly for layout freshness
+        applySubgraph();
+        syncDrawerWithVisibleSnapshot();
+        renderNavPanel();
         simulation.alpha(0.2).restart();
         updateFooter();
         renderMinimap();
@@ -1641,7 +1900,7 @@
   document.getElementById("btn-fit").addEventListener("click", fitToView);
   document.getElementById("btn-refit").addEventListener("click", () => {
     simulation.alpha(0.9).restart();
-    toast("重新布置中...");
+    toast("Re-laying out...");
   });
 
   document.getElementById("dr-close").addEventListener("click", closeDrawer);
@@ -1650,7 +1909,7 @@
     if (!minimapEl || !minimapToggle) return;
     minimapEl.setAttribute("data-collapsed", collapsed ? "1" : "0");
     minimapToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    minimapToggle.setAttribute("aria-label", collapsed ? "展开小地图" : "折叠小地图");
+    minimapToggle.setAttribute("aria-label", collapsed ? "Expand minimap" : "Collapse minimap");
   }
 
   function applyNeighborsCollapsed(collapsed) {
@@ -1659,15 +1918,15 @@
     drawerNeighborsHeading.setAttribute("aria-expanded", collapsed ? "false" : "true");
   }
 
-  applyMinimapCollapsed(safeLocalStorage.get("wiki-minimap-collapsed") === "1");
-  applyNeighborsCollapsed(safeLocalStorage.get("wiki-neighbors-collapsed") === "1");
+  applyMinimapCollapsed(safeLocalStorage.get(queueStorageKey("minimap-collapsed")) === "1");
+  applyNeighborsCollapsed(safeLocalStorage.get(queueStorageKey("neighbors-collapsed")) === "1");
 
   if (minimapEl && minimapToggle) {
     minimapToggle.addEventListener("click", (e) => {
       e.stopPropagation();
       const next = minimapEl.getAttribute("data-collapsed") !== "1";
       applyMinimapCollapsed(next);
-      safeLocalStorage.set("wiki-minimap-collapsed", next ? "1" : "0");
+      safeLocalStorage.set(queueStorageKey("minimap-collapsed"), next ? "1" : "0");
       if (!next) renderMinimap();
     });
   }
@@ -1676,7 +1935,7 @@
     if (!drawerNeighbors) return;
     const next = drawerNeighbors.getAttribute("data-collapsed") !== "1";
     applyNeighborsCollapsed(next);
-    safeLocalStorage.set("wiki-neighbors-collapsed", next ? "1" : "0");
+    safeLocalStorage.set(queueStorageKey("neighbors-collapsed"), next ? "1" : "0");
   }
 
   if (drawerNeighborsHeading) {
@@ -1720,7 +1979,32 @@
   if (navClose) {
     navClose.addEventListener("click", (e) => {
       e.stopPropagation();
-      setNavOpen(false);
+      if (window.innerWidth < NAV_BREAKPOINT) {
+        setNavOpen(false);
+      } else {
+        setNavCollapsed(!state.ui.navCollapsed);
+      }
+    });
+  }
+  if (navAllCommunitiesToggle) {
+    navAllCommunitiesToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      state.ui.allCommunitiesExpanded = !state.ui.allCommunitiesExpanded;
+      renderNavPanel();
+    });
+  }
+  if (secondaryToggle) {
+    secondaryToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setSecondaryOpen(!state.ui.secondaryOpen);
+      renderNavPanel();
+    });
+  }
+  if (secondaryClose) {
+    secondaryClose.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setSecondaryOpen(false);
+      renderNavPanel();
     });
   }
 
@@ -1729,7 +2013,7 @@
     document.getElementById("n-nodes").textContent = state.nodes.length;
     document.getElementById("n-edges").textContent = state.links.length;
     document.getElementById("n-date").textContent = DATA.meta.build_date;
-    const shown = state.visible.nodeIds.size || state.nodes.length;
+    const shown = state.visible.ready ? state.visible.nodeIds.size : state.nodes.length;
     document.getElementById("foot-shown").textContent = shown;
     document.getElementById("foot-total").textContent = state.nodes.length;
     const comms = Object.keys(state.communities).filter(k => k !== "_none").length;
@@ -1848,8 +2132,22 @@
     } catch (e) {}
   }
 
+  function syncResponsiveUI() {
+    if (window.innerWidth < NAV_BREAKPOINT) {
+      const app = document.getElementById("app");
+      if (app) app.classList.remove("nav-collapsed");
+    } else {
+      setNavOpen(false);
+      setNavCollapsed(state.ui.navCollapsed);
+    }
+    if (window.innerWidth < NAV_BREAKPOINT) {
+      setSecondaryOpen(false);
+    }
+  }
+
   // ---------- Resize ----------
   window.addEventListener("resize", () => {
+    syncResponsiveUI();
     if (simulation) {
       simulation.force("center", d3.forceCenter(svgNode.clientWidth / 2, svgNode.clientHeight / 2).strength(0.05));
       simulation.alpha(0.2).restart();
@@ -1860,6 +2158,7 @@
   // ---------- Boot ----------
   applyVariant(state.tweaks.variant);
   prepareData();
+  syncResponsiveUI();
   document.getElementById("wiki-title").textContent = DATA.meta.wiki_title;
   setupZoom();
   renderEdges();
@@ -1870,6 +2169,7 @@
   setupTweaks();
   setupEditMode();
   renderInsights();
+  setSecondaryOpen(false);
   updateFooter();
 
   // Mode switch buttons

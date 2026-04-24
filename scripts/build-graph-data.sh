@@ -1,14 +1,14 @@
 #!/bin/bash
-# build-graph-data.sh — 扫描 wiki/ 生成交互式图谱所需的 graph-data.json
+# build-graph-data.sh — scan wiki/ to generate graph-data.json for the interactive knowledge graph
 #
-# 用法：bash scripts/build-graph-data.sh <wiki_root> [output_path]
-#   wiki_root     包含 wiki/ 子目录的知识库根路径
-#   output_path   可选，默认 <wiki_root>/wiki/graph-data.json
+# Usage: bash scripts/build-graph-data.sh <wiki_root> [output_path]
+#   wiki_root     root path of the wiki containing the wiki/ subdirectory
+#   output_path   optional, defaults to <wiki_root>/wiki/graph-data.json
 #
-# 环境变量：
-#   LLM_WIKI_TEST_MODE=1   启用稳定输出（nodes/edges 按 id 字典序 + 时间戳固定）
+# Environment variables:
+#   LLM_WIKI_TEST_MODE=1   enable stable output (nodes/edges sorted by id + fixed timestamp)
 #
-# 退出码：0 成功；1 路径/依赖错误；2 wiki 结构不完整
+# Exit code: 0 success; 1 path/dependency error; 2 incomplete wiki structure
 
 set -eu
 shopt -s nullglob
@@ -24,25 +24,25 @@ MAX_INSIGHT_NODES=250
 MAX_INSIGHT_EDGES=1000
 
 command -v jq >/dev/null 2>&1 || {
-  echo "ERROR: jq 未安装。运行 brew install jq" >&2
+  echo "ERROR: jq is not installed. Run: brew install jq" >&2
   exit 1
 }
 
 command -v node >/dev/null 2>&1 || {
-  echo "ERROR: node 未安装。图谱 2.0 构建需要 node 运行时。运行 brew install node" >&2
+  echo "ERROR: node is not installed. Graph 2.0 build requires the node runtime. Run: brew install node" >&2
   exit 1
 }
 
 [ -f "$HELPER" ] || {
-  echo "ERROR: 找不到图谱分析 helper：$HELPER" >&2
-  echo "       重装 skill 可修复（bash install.sh --platform claude）" >&2
+  echo "ERROR: Graph analysis helper not found: $HELPER" >&2
+  echo "       Reinstalling the skill can fix this (bash install.sh --platform claude)" >&2
   exit 1
 }
 
 WIKI_DIR="$WIKI_ROOT/wiki"
 [ -d "$WIKI_DIR" ] || {
-  echo "ERROR: wiki 目录不存在：$WIKI_DIR" >&2
-  echo "       请先运行 init-wiki.sh 初始化知识库。" >&2
+  echo "ERROR: wiki directory not found: $WIKI_DIR" >&2
+  echo "       Please run init-wiki.sh to initialize the wiki first." >&2
   exit 2
 }
 
@@ -132,14 +132,11 @@ if [ ! -s "$NODES_TSV" ]; then
           global: { enabled: true, node_ids: [], degraded: false }
         },
         communities: [],
-        drawer: {
-          section_order: ["what_this_is", "why_now", "next_steps", "raw_content", "neighbors"]
-        },
         degraded: { path_to_community: true, community_to_global: true }
       }
     }' > "$OUTPUT_TMP"
   mv "$OUTPUT_TMP" "$OUTPUT"
-  echo "空图谱已写入：${OUTPUT}（wiki/ 下无可纳入节点）"
+  echo "Empty graph written: ${OUTPUT} (no nodes found under wiki/)"
   exit 0
 fi
 
@@ -262,7 +259,7 @@ if ! node "$HELPER" \
   "$MAX_CONTENT_LINES" \
   "$MAX_INSIGHT_NODES" \
   "$MAX_INSIGHT_EDGES"; then
-  echo "ERROR: 图谱分析 helper 执行失败：$HELPER" >&2
+  echo "ERROR: Graph analysis helper execution failed: $HELPER" >&2
   exit 1
 fi
 
@@ -276,7 +273,7 @@ jq -e '
   (.insights.sparse_communities | type) == "array" and
   (.learning | type) == "object"
 ' "$ANALYSIS_JSON" > /dev/null 2>&1 || {
-  echo "ERROR: 图谱分析 helper 返回坏 JSON：$ANALYSIS_JSON" >&2
+  echo "ERROR: Graph analysis helper returned invalid JSON: $ANALYSIS_JSON" >&2
   exit 1
 }
 
@@ -350,10 +347,10 @@ jq -n \
 
 mv "$OUTPUT_TMP" "$OUTPUT"
 
-echo "图谱数据已生成：$OUTPUT"
-echo "  节点：$NODE_COUNT"
-echo "  关联：$EDGE_COUNT"
-echo "  初始视图：$(echo "$INITIAL_VIEW" | jq 'length') 个节点"
-[ "$DEGRADE" = "1" ] && echo "  ⚠ 降级模式：内嵌内容 > 2MB，每节点仅保留前 ${MAX_CONTENT_LINES} 行"
-[ "$INSIGHTS_DEGRADED" = "true" ] && echo "  ⚠ 洞察降级：图规模超出预算，仅保留基础权重与社区"
+echo "Graph data generated: $OUTPUT"
+echo "  Nodes: $NODE_COUNT"
+echo "  Edges: $EDGE_COUNT"
+echo "  Initial view: $(echo "$INITIAL_VIEW" | jq 'length') nodes"
+[ "$DEGRADE" = "1" ] && echo "  Warning: degraded mode — embedded content > 2MB, only first ${MAX_CONTENT_LINES} lines kept per node"
+[ "$INSIGHTS_DEGRADED" = "true" ] && echo "  Warning: insights degraded — graph size exceeds budget, only basic weights and communities retained"
 exit 0

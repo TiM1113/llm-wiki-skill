@@ -4,10 +4,10 @@ sources: ["attention-is-all-you-need.pdf"]
 
 # Transformer
 
-Transformer 是一种基于自注意力机制的序列到序列模型架构。
+Transformer is a sequence-to-sequence model architecture based on the self-attention mechanism.
 
-## 核心组件
+## Core Components
 
-- [[Attention]] — 自注意力机制
-- [[Encoder]] — 编码器
-- [[Decoder]] — 解码器
+- [[Attention]] — Self-attention mechanism
+- [[Encoder]] — Encoder
+- [[Decoder]] — Decoder

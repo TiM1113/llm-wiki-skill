@@ -34,7 +34,7 @@ test_graph_data_exits_without_node() {
     fi
 
     assert_text_contains "$output" "node"
-    assert_text_contains "$output" "图谱 2.0 构建需要 node"
+    assert_text_contains "$output" "Graph 2.0 build requires the node runtime"
 
     rm -rf "$tmp_dir"
 }
@@ -53,7 +53,7 @@ test_graph_data_exits_when_helper_missing() {
     fi
 
     assert_text_contains "$output" "graph-analysis.js"
-    assert_text_contains "$output" "图谱分析 helper"
+    assert_text_contains "$output" "Graph analysis helper not found"
 
     rm -rf "$tmp_dir"
 }
@@ -75,7 +75,7 @@ test_graph_html_keeps_existing_html_when_helper_copy_fails() {
     fi
 
     assert_text_contains "$output" "graph-wash-helpers.js"
-    assert_text_contains "$output" "找不到vendor"
+    assert_text_contains "$output" "vendor not found"
     assert_text_contains "$(cat "$html_path")" "stable old html"
 
     rm -rf "$tmp_dir"

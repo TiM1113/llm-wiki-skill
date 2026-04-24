@@ -11,108 +11,108 @@ deepened: 2026-04-14
 
 ## Overview
 
-这份计划解决的是安装和升级路径把“可选提取器”误当成“默认前置”的问题。
+This plan addresses the problem that the install and upgrade paths mistakenly treat "optional extractors" as "default prerequisites".
 
-目标不是重做提取体系，也不是继续扩充安装器，而是把产品承诺重新收口到一个更稳的边界：
+The goal is not to redo the extraction system, nor to keep expanding the installer, but to re-constrain the product promise to a more stable boundary:
 
-- 默认安装和默认升级只保证知识库核心主线可用
-- 网页、X/Twitter、微信公众号、YouTube、知乎的自动提取改成显式启用
-- 依赖状态判断不再混淆源码目录、已安装目录和升级临时副本
-- 测试和文档改成保护这个新默认值，而不是继续把错误默认值锁死
+- Default install and default upgrade only ensure the knowledge base core main pipeline is usable
+- Automatic extraction for web pages, X/Twitter, WeChat public accounts, YouTube, and Zhihu becomes explicitly enabled
+- Dependency state judgment no longer conflates source directories, installed directories, and upgrade temporary copies
+- Tests and documentation protect this new default, rather than continuing to lock in the wrong default
 
 ## Problem Frame
 
-Phase B 已经明确要求“核心主线独立成立，外挂只是可选进料能力”（见 origin: `docs/brainstorms/2026-04-06-project-cleanup-and-restructuring-requirements.md`）。当前实现虽然在说明里写了“PDF / 本地文件 / 纯文本不依赖外挂”，但安装和升级行为仍然把可选提取器放在默认主路径上：
+Phase B has already made it clear that "the core main pipeline stands independently, extractors are just optional feeding capabilities" (see origin: `docs/brainstorms/2026-04-06-project-cleanup-and-restructuring-requirements.md`). The current implementation says "PDF / local files / plain text don't depend on extractors" in the explanation, but the install and upgrade behavior still places optional extractors on the default main path:
 
-- `install.sh` 默认安装会复制 bundled 提取器、安装网页提取的 Node 依赖、再尝试安装公众号工具
-- `install.sh --upgrade` 也会重复执行同一套可选提取器链路
-- `SKILL.md` 的首次使用说明会先让 agent 检查这些提取器依赖，缺失时还会引导所有平台运行 `setup.sh`
-- `adapter-state.sh` 默认假设自己运行在已安装目录结构里，导致源码目录调试和升级排查时结论漂移
-- `tests/regression.sh` 当前把“默认安装必须把可选提取器都装上”写成了回归断言
+- Default `install.sh` copies bundled extractors, installs Node dependencies for web extraction, then tries to install public account tools
+- `install.sh --upgrade` also repeats the same optional extractor pipeline
+- `SKILL.md`'s first-use description makes the agent first check these extractor dependencies; when missing, it guides all platforms to run `setup.sh`
+- `adapter-state.sh` assumes by default it runs within the installed directory structure, leading to conclusion drift when debugging source code directories or troubleshooting upgrades
+- `tests/regression.sh` currently writes "default install must install all optional extractors" as a regression assertion
 
-结果就是：只想处理本地文档和纯文本的用户，也会在拉最新版或重装时反复撞上可选依赖；一旦网络慢、源慢或环境不齐，体验就像“卡在依赖上”。
+The result: users who only want to process local documents and plain text repeatedly hit optional dependencies on pulling the latest version or reinstalling; once network is slow, source is slow, or environment is incomplete, the experience feels like "stuck on dependencies".
 
 ## Requirements Trace
 
-- R1. 默认安装和默认升级必须只保证知识库核心主线可用，不得因为可选提取器缺失或安装缓慢阻断成功路径。
-- R2. 可选提取器必须改成显式启用，只有用户明确要用 URL 类自动提取时才进入对应安装链路。
-- R3. 共享说明和技能说明必须按当前平台给出正确的安装指令，不能再把 `setup.sh` 当成通用入口。
-- R4. 依赖状态判断必须能稳定区分源码目录、已安装目录和升级临时副本三种场景。
-- R5. 默认升级在存在多个已安装平台时必须避免误操作到非目标平台。
-- R6. 回归测试必须把“核心默认可用、可选功能按需开启”作为新的保护边界。
+- R1. Default install and default upgrade must only ensure the knowledge base core main pipeline is usable; they must not block the success path due to missing or slow optional extractors.
+- R2. Optional extractors must become explicitly enabled; the corresponding install pipeline is entered only when the user explicitly needs URL-type automatic extraction.
+- R3. Shared instructions and skill instructions must give correct install commands for the current platform; `setup.sh` is no longer treated as the universal entry.
+- R4. Dependency state judgment must reliably distinguish between three scenarios: source directory, installed directory, and upgrade temporary copy.
+- R5. Default upgrade must avoid accidentally operating on non-target platforms when multiple installed platforms exist.
+- R6. Regression tests must take "core is available by default, optional features are enabled on demand" as the new protection boundary.
 
 ## Scope Boundaries
 
-- 不重写网页、YouTube、公众号等提取器自身的实现。
-- 不改变核心知识库工作流的内容分析、页面生成和目录结构。
-- 不引入插件市场、自动发现系统或复杂的开关界面。
-- 不在这一轮做按单个来源细粒度选择提取器的复杂参数设计；先把“默认关闭，显式开启”立住。
-- 不要求老用户迁移已有知识库。
+- Do not rewrite the implementation of web, YouTube, public account, or other extractors themselves.
+- Do not change the content analysis, page generation, and directory structure of the core knowledge base workflows.
+- Do not introduce a plugin market, auto-discovery system, or complex toggle UI.
+- Do not design complex parameters for fine-grained per-source extractor selection this round; first establish "off by default, explicit enable".
+- Do not require existing users to migrate existing knowledge bases.
 
 ## Context & Research
 
 ### Relevant Code and Patterns
 
-- `install.sh` 已经把安装动作集中在一个脚本里，并有 `--platform`、`--upgrade`、hook 注册等统一入口，适合继续收口默认路径。
-- `scripts/source-registry.sh` 和 `scripts/source-registry.tsv` 已经提供了来源与依赖的权威定义，适合继续作为“哪些属于可选提取器”的单一来源。
-- `scripts/adapter-state.sh` 已经承担状态分类，但路径解析还是局部猜测，没有和安装脚本共享运行场景定义。
-- `tests/adapter-state.sh` 已经有状态分类测试骨架，适合补成“源码 / 安装 / 升级临时副本”的矩阵。
-- `tests/regression.sh` 已经覆盖安装、升级入口和文档对齐，适合改成保护新的默认合同。
+- `install.sh` already centralizes install actions in one script, with unified entry points like `--platform`, `--upgrade`, hook registration; suitable for continuing to constrain the default path.
+- `scripts/source-registry.sh` and `scripts/source-registry.tsv` already provide authoritative definitions of sources and dependencies, suitable as the single source of truth for "which are optional extractors".
+- `scripts/adapter-state.sh` already handles state classification, but path resolution is still local guessing, not sharing run scenario definitions with the install script.
+- `tests/adapter-state.sh` already has a state classification test skeleton, suitable for expanding to a "source / installed / upgrade temporary copy" matrix.
+- `tests/regression.sh` already covers install, upgrade entries, and doc alignment, suitable for changing to protect the new default contract.
 
 ### Institutional Learnings
 
-- `docs/plans/2026-04-06-002-phase-b-core-and-adapter-separation-plan.md` 已明确把“核心主线独立成立”作为底线。
-- `docs/solutions/integration-issues/unify-optional-adapter-states-and-fallback-paths-2026-04-06.md` 说明了可选提取器失败必须被清晰隔离，不能拖垮主线。
-- `.context/compound-engineering/todos/005-pending-p2-separate-source-and-installed-skill-paths.md` 已把本次 review 的核心问题收敛为“源码目录 vs 已安装目录未区分清楚”。
-- `docs/solutions/logic-errors/lint-runner-index-path-and-install-sync-2026-04-14.md` 提醒了这个仓库长期存在“源码改了，但已安装副本不同步”的高频风险，计划里必须把安装副本和运行副本一起考虑。
+- `docs/plans/2026-04-06-002-phase-b-core-and-adapter-separation-plan.md` has made "the core main pipeline stands independently" the bottom line.
+- `docs/solutions/integration-issues/unify-optional-adapter-states-and-fallback-paths-2026-04-06.md` explains that optional extractor failures must be clearly isolated, cannot drag down the main pipeline.
+- `.context/compound-engineering/todos/005-pending-p2-separate-source-and-installed-skill-paths.md` has converged the core issue of this review to "source directory vs installed directory not clearly distinguished".
+- `docs/solutions/logic-errors/lint-runner-index-path-and-install-sync-2026-04-14.md` reminds us this repo has a long-standing high-frequency risk of "source changed, but installed copy out of sync"; the plan must consider both install copy and run copy.
 
 ### External References
 
-- 本次不需要额外外部资料。这里的问题是本仓库已经定下的边界没有被默认安装路径贯彻，仓库内现有计划、说明和测试已经足够定义正确方向。
+- No additional external references needed. The issue here is that the boundary already set by this repo hasn't been followed by the default install path; existing plans, instructions, and tests in the repo are enough to define the correct direction.
 
 ## Key Technical Decisions
 
-- 默认安装合同改为“核心优先，提取器显式开启”。
-  理由：这直接对应 R1/R2，也是用户反馈里最痛的点。只要默认路径仍然碰可选提取器，后续再怎么补文案和状态提示，体验都会继续被拖慢。
+- Default install contract becomes "core first, extractors explicitly enabled".
+  Reason: This directly addresses R1/R2, and is the most painful point in user feedback. As long as the default path still touches optional extractors, no matter how much copy and state hints are added, the experience will continue to be dragged down.
 
-- 新增显式开关 `--with-optional-adapters`，用于安装和升级时主动启用可选提取器链路。
-  理由：先解决“默认不该装”的问题，比一上来做按来源细粒度选择更稳。布尔开关足够表达“我要启用 URL 自动提取”，也更容易在文档和技能说明里讲清楚。
+- Add explicit switch `--with-optional-adapters` to actively enable optional extractor pipeline during install and upgrade.
+  Reason: First solve the "shouldn't be installed by default" problem, more stable than starting with fine-grained per-source selection. A boolean switch is enough to express "I want to enable URL automatic extraction", and it's easier to explain clearly in docs and skill instructions.
 
-- `setup.sh` 保留为 Claude 兼容入口，但只在 Claude 专属文档里出现；共享说明改为始终使用 `install.sh --platform <current-platform>`。
-  理由：这既保留向后兼容，也消除跨平台误导。
+- Keep `setup.sh` as Claude-compatible entry, but only appears in Claude-specific docs; shared instructions always use `install.sh --platform <current-platform>`.
+  Reason: This preserves backward compatibility while eliminating cross-platform misleading.
 
-- 引入共享的运行场景解析 helper，由安装脚本和 `adapter-state.sh` 一起使用。
-  理由：源码目录、已安装目录、升级临时副本的路径判断不能继续各写一套。共享 helper 比“在某个脚本里再补一个特判”更稳。
+- Introduce a shared run scenario resolution helper, used jointly by install script and `adapter-state.sh`.
+  Reason: Path judgment for source directory, installed directory, and upgrade temporary copy cannot continue to have each script write its own version. Shared helper is more stable than "adding another special case to some script".
 
-- 保留 `llm-wiki` 包内的 `deps/` 作为可选提取器源码仓，但默认不把它们激活成目标平台下的已启用提取器。
-  理由：这样既能保持后续显式启用时不必重新拉源码，也能把“技能包里带着源码”和“当前平台已经启用这个提取器”明确分开。
+- Keep the `deps/` inside the `llm-wiki` package as the optional extractor source repository, but by default don't activate them as enabled extractors on the target platform.
+  Reason: This way future explicit enabling doesn't need to re-pull source, and also clearly separates "skill package carries source" from "this extractor is currently enabled on this platform".
 
-- 测试策略从“默认装全家桶”改为“两层保护”：默认核心路径 + 显式可选路径。
-  理由：没有测试护栏，新的默认合同很快又会被后续改动拉回旧路径。
+- Change test strategy from "default installs the whole suite" to "two-layer protection": default core path + explicit optional path.
+  Reason: Without test guardrails, the new default contract will soon be pulled back to the old path by later changes.
 
 ## Open Questions
 
 ### Resolved During Planning
 
-- 默认安装和默认升级是否还要继续碰可选提取器？
-  结论：不要。默认只保证核心主线，提取器必须显式开启。
+- Should default install and default upgrade continue to touch optional extractors?
+  Conclusion: No. Default only guarantees the core main pipeline; extractors must be explicitly enabled.
 
-- 是否需要本轮就设计按单个来源选择提取器的复杂参数？
-  结论：不需要。本轮先用 `--with-optional-adapters` 建立清晰边界，细粒度选择延后。
+- Does this round need to design complex parameters for fine-grained per-source extractor selection?
+  Conclusion: No. This round uses `--with-optional-adapters` to establish a clear boundary; fine-grained selection deferred.
 
-- 源码目录和已安装目录的问题是补一个局部特判，还是立共享模型？
-  结论：立共享模型。否则安装脚本和状态脚本还会继续漂移。
+- For source vs installed directory, do we add a local special case or establish a shared model?
+  Conclusion: Establish a shared model. Otherwise install script and state script will continue to drift.
 
 ### Deferred to Implementation
 
-- `--with-optional-adapters` 是否需要在后续扩展成 `--optional-adapters=<list>`。
-  先不做；实现阶段只要保持内部结构可扩展即可。
+- Whether `--with-optional-adapters` should be extended to `--optional-adapters=<list>` later.
+  Not this round; in implementation, just keep internal structure extensible.
 
-- 共享运行场景 helper 是独立成 `scripts/runtime-context.sh`，还是并入现有 `shared-config.sh`。
-  这里延后到实现时根据 shell 复用边界决定，但必须是两个脚本共用的一处逻辑。
+- Whether the shared run scenario helper is a standalone `scripts/runtime-context.sh` or merged into existing `shared-config.sh`.
+  Deferred to implementation, decided by shell reuse boundary, but must be single logic shared by both scripts.
 
-- 安装完成后是否需要新增独立的 `doctor` 或 `status --install` 类诊断入口。
-  本轮不做新命令，只先让现有安装输出和状态输出对齐。
+- Whether to add a separate `doctor` or `status --install` diagnostic entry after install completion.
+  No new command this round; first align existing install output and state output.
 
 ## High-Level Technical Design
 
@@ -120,28 +120,28 @@ Phase B 已经明确要求“核心主线独立成立，外挂只是可选进料
 
 ### Behavior Matrix
 
-| 场景 | 默认行为 | 显式启用可选提取器后 |
+| Scenario | Default behavior | After explicitly enabling optional extractors |
 |---|---|---|
-| `bash install.sh --platform <x>` | 复制核心 skill、脚本、模板、平台入口；不触发 Node/uv/Chrome 相关安装 | 增加可选提取器复制与依赖安装 |
-| `bash install.sh --upgrade --platform <x>` | 拉最新代码并更新核心安装副本；不触发可选提取器安装 | 增加可选提取器刷新与依赖安装 |
-| 共享说明 / `SKILL.md` 首次使用 | 本地文件、纯文本直接进入主线；不提前检查提取器 | 只有用户给了 URL 且提取器缺失时，提示当前平台执行显式开关安装 |
-| `adapter-state.sh check` 在源码目录运行 | 读取源码目录的 bundled 依赖位置，不误报为未安装 | 同一状态模型，额外反映环境条件 |
-| `adapter-state.sh check` 在已安装目录 / 升级临时副本运行 | 读取目标 skill root 的 bundled 依赖位置 | 同一状态模型，额外反映环境条件 |
+| `bash install.sh --platform <x>` | Copy core skill, scripts, templates, platform entry; do not trigger Node/uv/Chrome-related installs | Add optional extractor copy and dependency install |
+| `bash install.sh --upgrade --platform <x>` | Pull latest code and update core install copy; do not trigger optional extractor install | Add optional extractor refresh and dependency install |
+| Shared instructions / `SKILL.md` first use | Local files, plain text directly enter main pipeline; don't pre-check extractors | Only when user provides URL and extractor is missing, prompt current platform to run explicit switch install |
+| `adapter-state.sh check` run in source directory | Read bundled dependencies in source directory location; don't mis-report as not installed | Same state model, additionally reflects environment conditions |
+| `adapter-state.sh check` run in installed / upgrade temp copy | Read bundled dependencies in target skill root | Same state model, additionally reflects environment conditions |
 
 ### Shared Context Shape
 
 - `layout_mode`: `source_checkout` / `installed_skill` / `upgrade_target`
-- `bundle_root`: 当前 llm-wiki 本体所在根目录
-- `optional_adapter_root`: bundled 提取器应被检查或写入的目录
+- `bundle_root`: Root directory of the current llm-wiki body
+- `optional_adapter_root`: Directory where bundled extractors should be checked or written
 - `platform`: `claude` / `codex` / `openclaw` / `unknown`
 
-所有安装和状态判断只读这组共享结果，不再各自从 `dirname "$PROJECT_ROOT"` 之类的局部推断出路径。
+All install and state judgments only read this shared result, no longer locally inferring paths from `dirname "$PROJECT_ROOT"`-style logic.
 
 ## Implementation Units
 
-- [x] **Unit 1: 重定义安装与升级的默认合同**
+- [x] **Unit 1: Redefine the default contract for install and upgrade**
 
-**Goal:** 把默认安装和默认升级从“顺手装可选提取器”改成“只保证核心主线”。
+**Goal:** Change default install and default upgrade from "install optional extractors along the way" to "only guarantee core main pipeline".
 
 **Requirements:** R1, R2, R5
 
@@ -156,30 +156,30 @@ Phase B 已经明确要求“核心主线独立成立，外挂只是可选进料
 - Test: `tests/regression.sh`
 
 **Approach:**
-- 在 `install.sh` 中拆开“核心 bundle 安装”和“可选提取器 bootstrap”两条路径。
-- 保留 `MANAGED_ITEMS` 对 `deps/` 的复制，让技能包内继续携带可选提取器源码；默认路径只跳过 sibling adapter 安装和额外依赖 bootstrap。
-- 为 `install` 和 `upgrade` 共用新增的显式开关 `--with-optional-adapters`。
-- 默认 `install` / `upgrade` 只执行核心路径；只有开关存在时才执行 bundled 提取器复制、Node 依赖安装、`uv tool install`。
-- 修正 `--upgrade --platform auto` 的行为：当检测到多个已安装平台时直接失败，避免在默认升级中误更新多个安装副本。
-- 保留现有 hook 行为，不让核心升级破坏 Claude 的 hook 配置。
+- In `install.sh`, split "core bundle install" and "optional extractor bootstrap" into two paths.
+- Keep `MANAGED_ITEMS` copying `deps/`, so the skill package continues to carry optional extractor source; the default path only skips sibling adapter install and additional dependency bootstrap.
+- Add explicit switch `--with-optional-adapters` shared by `install` and `upgrade`.
+- Default `install` / `upgrade` only runs the core path; only when the switch is present does it run bundled extractor copy, Node dependency install, `uv tool install`.
+- Fix the behavior of `--upgrade --platform auto`: when multiple installed platforms are detected, fail directly to avoid accidentally updating multiple install copies in the default upgrade.
+- Preserve existing hook behavior; don't let core upgrade break Claude's hook config.
 
 **Patterns to follow:**
-- `install.sh` 现有的 `--platform` / `--upgrade` 参数处理和统一输出风格
-- `README.md` 当前对多平台安装入口的表达方式
+- Existing `--platform` / `--upgrade` parameter handling and unified output style in `install.sh`
+- Current multi-platform install entry expression in `README.md`
 
 **Test scenarios:**
-- Happy path: 仅有核心平台目录时，默认安装成功完成，并生成 `~/.<platform>/skills/llm-wiki` 核心副本。
-- Happy path: 显式传入 `--with-optional-adapters` 时，可选提取器链路才会执行。
-- Error path: 机器上同时存在多个平台安装且执行 `bash install.sh --upgrade` 时，脚本拒绝继续并提示必须显式指定平台。
-- Integration: Claude 已有 hook 配置时，核心升级后 hook 配置仍保持不变。
+- Happy path: When only core platform directories exist, default install completes successfully and generates `~/.<platform>/skills/llm-wiki` core copy.
+- Happy path: When `--with-optional-adapters` is explicitly passed, the optional extractor pipeline runs.
+- Error path: When machine has multiple platform installs and executes `bash install.sh --upgrade`, the script refuses to continue and indicates platform must be explicitly specified.
+- Integration: When Claude has existing hook config, core upgrade keeps the hook config unchanged.
 
 **Verification:**
-- 默认安装和默认升级的输出不再包含可选提取器安装成功/失败作为成功路径必要条件。
-- 多平台升级不再出现“自动同时更新多个安装副本”的情况。
+- Default install and default upgrade output no longer contain optional extractor install success/failure as a necessary condition for the success path.
+- Multi-platform upgrade no longer "automatically updates multiple install copies simultaneously".
 
-- [x] **Unit 2: 建立共享运行场景解析**
+- [x] **Unit 2: Establish shared run scenario resolution**
 
-**Goal:** 让安装脚本和依赖状态脚本对“源码目录 / 已安装目录 / 升级临时副本”使用同一套路径模型。
+**Goal:** Let the install script and dependency state script use the same path model for "source directory / installed directory / upgrade temporary copy".
 
 **Requirements:** R4
 
@@ -193,30 +193,30 @@ Phase B 已经明确要求“核心主线独立成立，外挂只是可选进料
 - Test: `tests/regression.sh`
 
 **Approach:**
-- 抽出共享 helper，统一解析 `layout_mode`、`bundle_root`、`optional_adapter_root` 和 `platform`。
-- `install.sh` 在安装、升级和状态摘要调用里显式传递目标 root 或 mode，不再让 `adapter-state.sh` 自己猜。
-- `adapter-state.sh` 仍保留手动调用时的自动检测兜底，但优先消费调用方显式传入的上下文。
-- 源码目录模式下，bundled 提取器存在性应读取仓库内 `deps/`；已安装目录和升级目标模式下，应读取目标 skill root 下的 sibling 目录。
-- 源码目录模式需要明确区分“仓库里带着提取器源码”与“目标安装副本已经具备可运行条件”两件事，避免 `deps/.../node_modules` 这类残留再次制造“已经装好”的假象。
-- 状态输出里补足足够的诊断信息，帮助定位“源代码有、安装副本没有”这类问题，但不要把调试细节泄露到面向普通用户的默认说明里。
+- Extract shared helper, unifying resolution of `layout_mode`, `bundle_root`, `optional_adapter_root`, and `platform`.
+- `install.sh` explicitly passes target root or mode in install, upgrade, and status summary calls; no longer letting `adapter-state.sh` guess itself.
+- `adapter-state.sh` still keeps auto-detection fallback for manual calls, but prioritizes consuming the context explicitly passed by the caller.
+- In source directory mode, bundled extractor presence should read `deps/` inside the repo; in installed directory and upgrade target modes, should read sibling directories under target skill root.
+- Source directory mode needs to clearly distinguish "repo carries extractor source" from "target install copy already meets runnable conditions", avoiding residual `deps/.../node_modules` again creating the illusion of "already installed".
+- Add sufficient diagnostic info to state output to help locate problems like "source code has, install copy doesn't", but don't leak debug details to default instructions for regular users.
 
 **Patterns to follow:**
-- `scripts/shared-config.sh` 当前“多脚本共享单一配置”的做法
-- `tests/adapter-state.sh` 现有临时 skill root fixture 风格
+- Current "multi-script sharing single config" pattern in `scripts/shared-config.sh`
+- Existing temporary skill root fixture style in `tests/adapter-state.sh`
 
 **Test scenarios:**
-- Happy path: 源码目录模式下检查 `web_article` 与 `youtube_video` 时，不再把 bundled 提取器误报成未安装。
-- Happy path: 已安装目录模式下，对同一来源的检查结果与真实安装状态一致。
-- Happy path: 升级临时目标模式下，状态脚本读取的是目标目录而不是当前源码目录。
-- Edge case: 仓库里存在历史残留的 `node_modules` 或其它提取器产物时，状态检查不会把源码目录误当成目标安装副本已就绪。
-- Error path: `classify-run` 在 preflight 为 `not_installed`、`env_unavailable`、`unsupported` 时，保留原状态而不是被覆盖成 `runtime_failed` 或 `empty_result`。
+- Happy path: In source directory mode checking `web_article` and `youtube_video` no longer mis-reports bundled extractors as not installed.
+- Happy path: In installed directory mode, the same source check result matches the actual install state.
+- Happy path: In upgrade temporary target mode, the state script reads the target directory instead of the current source directory.
+- Edge case: When historical residue of `node_modules` or other extractor artifacts exists in the repo, state check doesn't mistake source directory for target install copy being ready.
+- Error path: When `classify-run` preflight is `not_installed`, `env_unavailable`, or `unsupported`, original state is preserved rather than overwritten to `runtime_failed` or `empty_result`.
 
 **Verification:**
-- 同一组 fixture 在三种 mode 下的结论只随真实目录和环境变化，不再随脚本运行位置漂移。
+- The same fixture in three modes produces conclusions that only vary with actual directory and environment, no longer drifting with script execution location.
 
-- [x] **Unit 3: 把共享说明和技能路由改成按需检查可选提取器**
+- [x] **Unit 3: Change shared instructions and skill routing to on-demand check optional extractors**
 
-**Goal:** 让用户只有在真的用到 URL 自动提取时，才被引导去启用可选提取器。
+**Goal:** Let users be guided to enable optional extractors only when they really need URL automatic extraction.
 
 **Requirements:** R1, R2, R3
 
@@ -233,30 +233,30 @@ Phase B 已经明确要求“核心主线独立成立，外挂只是可选进料
 - Test: `tests/regression.sh`
 
 **Approach:**
-- 移除 `SKILL.md` 里“首次使用先检查所有提取器依赖”的默认前置描述，改成两层说明：
-  - 核心主线前置条件：能执行 shell、能读写本地文件
-  - URL 自动提取附加条件：仅当命中对应来源时再检查 Chrome / uv / 提取器
-- 统一将缺失提取器时的补装指令改成当前平台的 `bash install.sh --platform <current-platform> --with-optional-adapters`。
-- `setup.sh` 保留 Claude 兼容包装，但文档中只在 Claude 专属入口里提到，不再出现在共享说明和跨平台技能说明里。
-- README 的“更新”说明同步改成：默认升级更新核心；若需要重新拉起可选提取器，再显式加开关。
+- Remove the "check all extractor dependencies first on first use" default prerequisite description from `SKILL.md`, change to two-layer explanation:
+  - Core main pipeline prerequisites: can run shell, can read/write local files
+  - URL automatic extraction additional conditions: only check Chrome / uv / extractor when hitting the corresponding source
+- Unify the supplementary install command for missing extractors to current platform's `bash install.sh --platform <current-platform> --with-optional-adapters`.
+- `setup.sh` keeps Claude-compatible wrapping, but in docs it's only mentioned at Claude-specific entries, no longer appearing in shared instructions and cross-platform skill instructions.
+- README's "update" instructions sync to: default upgrade updates core; if need to re-pull optional extractors, explicitly add switch.
 
 **Patterns to follow:**
-- `README.md` 当前“共享说明 + 平台薄入口”结构
-- `SKILL.md` 当前按来源总表路由 URL / 文件 / 文本的组织方式
+- README.md's current "shared instructions + thin platform entries" structure
+- Current source-based URL / file / text routing organization in `SKILL.md`
 
 **Test scenarios:**
-- Happy path: 只处理本地文件或纯文本时，技能说明不再要求先安装网页/YouTube/公众号提取器。
-- Happy path: 命中 URL 来源且提取器未启用时，说明会给出当前平台的显式补装指令。
-- Error path: Codex 或 OpenClaw 文档中不再把 `setup.sh` 当成通用补装动作。
-- Integration: README、平台入口和 `SKILL.md` 三处对于默认安装与显式启用的说法保持一致。
+- Happy path: When only processing local files or plain text, skill instructions no longer require first installing web/YouTube/public account extractors.
+- Happy path: When hitting a URL source with extractor not enabled, instructions give explicit supplementary install command for current platform.
+- Error path: Codex or OpenClaw docs no longer treat `setup.sh` as a universal supplementary install action.
+- Integration: README, platform entries, and `SKILL.md` three locations keep consistent wording on default install vs explicit enabling.
 
 **Verification:**
-- 共享说明与平台入口不会再把 Claude 专属命令误导给其他平台。
-- 本地文件 / 纯文本工作流在说明层面不再被可选提取器门槛污染。
+- Shared instructions and platform entries no longer misleadingly give Claude-specific commands to other platforms.
+- Local file / plain text workflows no longer polluted by optional extractor thresholds at the instruction layer.
 
-- [x] **Unit 4: 重写回归矩阵，锁住新的默认边界**
+- [x] **Unit 4: Rewrite regression matrix, lock new default boundary**
 
-**Goal:** 让测试保护“核心默认可用、可选功能显式开启”的新合同，并补齐升级与运行场景的回归缺口。
+**Goal:** Let tests protect the new contract of "core available by default, optional features explicitly enabled", and fill regression gaps for upgrade and run scenarios.
 
 **Requirements:** R4, R5, R6
 
@@ -267,57 +267,57 @@ Phase B 已经明确要求“核心主线独立成立，外挂只是可选进料
 - Modify: `tests/adapter-state.sh`
 
 **Approach:**
-- 将现有“默认安装应装上全部提取器”的断言改成：
-  - 默认安装只验证核心副本落地且不阻塞
-  - 显式 `--with-optional-adapters` 时才验证提取器被复制/安装
-- 为 `upgrade` 增加 fixture 化回归：
-  - 已安装副本存在时的核心升级
-  - 多平台存在时的 `--upgrade` 拒绝分支
-  - hook 配置保留
-- 为 `adapter-state` 增加三类运行场景矩阵和 preflight 保留断言。
-- 保持已有状态分类测试，但把它们改为围绕共享 context helper 组织，而不是只测单一路径。
+- Change the existing "default install should install all extractors" assertion to:
+  - Default install only verifies core copy lands and doesn't block
+  - Only when explicit `--with-optional-adapters` verify extractors are copied/installed
+- Add fixtured regression for `upgrade`:
+  - Core upgrade when installed copy exists
+  - `--upgrade` refusal branch when multiple platforms exist
+  - hook config preserved
+- Add three-category run scenario matrix and preflight preservation assertion for `adapter-state`.
+- Keep existing state classification tests, but reorganize them around the shared context helper rather than only testing a single path.
 
 **Patterns to follow:**
-- `tests/regression.sh` 当前以临时 HOME 和 stub 二进制模拟安装环境的方式
-- `tests/adapter-state.sh` 当前以 `mktemp` skill root 组装小型 fixture 的方式
+- `tests/regression.sh`'s current way of simulating install environment with temporary HOME and stub binaries
+- `tests/adapter-state.sh`'s current way of assembling small fixtures with `mktemp` skill root
 
 **Test scenarios:**
-- Happy path: 默认安装在没有 `bun`、没有 `uv`、没有 Chrome 调试端口时仍能完成核心安装。
-- Happy path: 显式启用可选提取器时，网页提取 Node 依赖和公众号工具安装链路才会被执行。
-- Error path: 多平台已安装时执行默认升级，测试应看到脚本拒绝继续。
-- Integration: 从源码目录、已安装目录、升级目标目录分别运行状态检查，输出与真实目录状态一致。
+- Happy path: Default install completes core install successfully even without `bun`, `uv`, or Chrome debug port.
+- Happy path: With explicit optional extractors enabled, web extraction Node dependencies and public account tool install pipeline runs.
+- Error path: Default upgrade with multiple platforms installed, test should see the script refuse to continue.
+- Integration: Running state check from source directory, installed directory, and upgrade target directory respectively, output matches actual directory state.
 
 **Verification:**
-- 回归套件会在“谁把可选提取器重新塞回默认路径”这类改动上直接失败。
+- Regression suite will directly fail on changes like "who re-stuffed optional extractors back into the default path".
 
 ## System-Wide Impact
 
-- **Interaction graph:** `install.sh`、`SKILL.md`、`README.md`、平台入口和测试会一起变化；任何一处继续保留旧默认值，都会把用户重新带回错误路径。
-- **Error propagation:** 默认路径不再把 Node、uv、Chrome 相关问题传播成安装失败；这些错误只在显式启用可选提取器后出现。
-- **State lifecycle risks:** 运行场景 helper 如果没有被所有调用方统一使用，源码目录和安装目录仍然会继续漂移。
-- **API surface parity:** 三个平台的安装口径必须保持一致；Claude 的兼容入口只能作为特例保留，不能重新溢出到共享说明。
-- **Integration coverage:** 仅靠单元化 shell 断言不够，必须补“默认安装 + 显式可选 + 升级 + 三种运行场景”的组合回归。
-- **Unchanged invariants:** 本地文件、纯文本和已初始化知识库的主线工作流保持不变；URL 自动提取仍然存在，只是从默认安装路径中移出。
+- **Interaction graph:** `install.sh`, `SKILL.md`, `README.md`, platform entries, and tests change together; any location retaining the old default will pull users back to the wrong path.
+- **Error propagation:** Default path no longer propagates Node, uv, Chrome-related issues as install failures; these errors only appear after explicit optional extractor enabling.
+- **State lifecycle risks:** If the run scenario helper isn't uniformly used by all callers, source directory and installed directory will continue to drift.
+- **API surface parity:** Three platforms' install wording must stay consistent; Claude's compatibility entry can only be kept as a special case, cannot re-leak to shared instructions.
+- **Integration coverage:** Unit shell assertions alone aren't enough; must add combined regression of "default install + explicit optional + upgrade + three run scenarios".
+- **Unchanged invariants:** Main workflow for local files, plain text, and initialized knowledge bases remains unchanged; URL automatic extraction still exists, just moved out of the default install path.
 
 ## Risks & Dependencies
 
 | Risk | Mitigation |
 |------|------------|
-| 新增开关后，README / SKILL / 平台入口说法再次漂移 | 在 Unit 3 和 Unit 4 一起收口，用字符串断言和安装回归同时保护 |
-| 共享运行场景 helper 设计过重，反而扩大改动面 | 只抽路径和 mode 解析，不抽安装业务逻辑 |
-| 默认升级改成核心优先后，老用户以为可选提取器“被删了” | 在升级输出和 README 中明确写出“核心已更新；如需 URL 自动提取，再加显式开关” |
-| 现有兼容入口 `setup.sh` 被彻底边缘化后引起 Claude 老用户困惑 | 保留包装脚本不删，只调整它在文档中的出现位置 |
+| After adding new switch, README / SKILL / platform entries drift again | Constrain together in Unit 3 and Unit 4, protected simultaneously by string assertions and install regression |
+| Shared run scenario helper design too heavy, instead expanding change surface | Only extract path and mode resolution, not install business logic |
+| After default upgrade changes to core-first, existing users think optional extractors "got deleted" | Clearly write in upgrade output and README: "core updated; if URL automatic extraction needed, add explicit switch" |
+| Existing compatibility entry `setup.sh` being fully marginalized causes confusion for Claude legacy users | Keep the wrapping script, only adjust where it appears in docs |
 
 ## Documentation / Operational Notes
 
-- README 需要把“默认升级会安装依赖”改成“默认升级只更新核心”。
-- 平台薄入口要统一补一句：URL 自动提取属于可选功能，需要显式启用。
-- 安装输出建议把“核心已就绪”和“可选提取器状态”分开说，避免用户把可选问题误解成核心不可用。
+- README needs to change "default upgrade installs dependencies" to "default upgrade only updates core".
+- Platform thin entries should uniformly add a line: URL automatic extraction is an optional feature and needs to be explicitly enabled.
+- Install output recommends separating "core ready" from "optional extractor state", avoiding users misinterpreting optional problems as core unavailability.
 
 ## Sources & References
 
-- **Origin document:** [docs/brainstorms/2026-04-06-project-cleanup-and-restructuring-requirements.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/docs/brainstorms/2026-04-06-project-cleanup-and-restructuring-requirements.md)
-- Related plan: [docs/plans/2026-04-06-002-phase-b-core-and-adapter-separation-plan.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/docs/plans/2026-04-06-002-phase-b-core-and-adapter-separation-plan.md)
-- Related solution: [docs/solutions/integration-issues/unify-optional-adapter-states-and-fallback-paths-2026-04-06.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/docs/solutions/integration-issues/unify-optional-adapter-states-and-fallback-paths-2026-04-06.md)
-- Related solution: [docs/solutions/logic-errors/lint-runner-index-path-and-install-sync-2026-04-14.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/docs/solutions/logic-errors/lint-runner-index-path-and-install-sync-2026-04-14.md)
-- Related todo: [.context/compound-engineering/todos/005-pending-p2-separate-source-and-installed-skill-paths.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/.context/compound-engineering/todos/005-pending-p2-separate-source-and-installed-skill-paths.md)
+- **Origin document:** [docs/brainstorms/2026-04-06-project-cleanup-and-restructuring-requirements.md](~/Desktop/project/llm-wiki-skill/docs/brainstorms/2026-04-06-project-cleanup-and-restructuring-requirements.md)
+- Related plan: [docs/plans/2026-04-06-002-phase-b-core-and-adapter-separation-plan.md](~/Desktop/project/llm-wiki-skill/docs/plans/2026-04-06-002-phase-b-core-and-adapter-separation-plan.md)
+- Related solution: [docs/solutions/integration-issues/unify-optional-adapter-states-and-fallback-paths-2026-04-06.md](~/Desktop/project/llm-wiki-skill/docs/solutions/integration-issues/unify-optional-adapter-states-and-fallback-paths-2026-04-06.md)
+- Related solution: [docs/solutions/logic-errors/lint-runner-index-path-and-install-sync-2026-04-14.md](~/Desktop/project/llm-wiki-skill/docs/solutions/logic-errors/lint-runner-index-path-and-install-sync-2026-04-14.md)
+- Related todo: [.context/compound-engineering/todos/005-pending-p2-separate-source-and-installed-skill-paths.md](~/Desktop/project/llm-wiki-skill/.context/compound-engineering/todos/005-pending-p2-separate-source-and-installed-skill-paths.md)

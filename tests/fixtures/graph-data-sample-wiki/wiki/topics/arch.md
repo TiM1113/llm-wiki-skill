@@ -2,9 +2,9 @@
 sources: ["attention-is-all-you-need.pdf"]
 ---
 
-# 深度学习架构
+# Deep Learning Architecture
 
-本主题涵盖深度学习的核心架构组件。
+This topic covers core architectural components of deep learning.
 
 - [[Transformer]]
 - [[Attention]]

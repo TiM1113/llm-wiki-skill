@@ -70,11 +70,11 @@ const helpers = require(path.resolve(process.argv[2]));
 
 const { truncateLabel, cardDims } = helpers;
 
-const wide = cardDims({ id: '1', label: '超级超级超级超级超级超级长标签AlphaBeta', type: 'entity' });
+const wide = cardDims({ id: '1', label: 'SuperSuperSuperSuperSuperSuperLongLabelAlphaBeta', type: 'entity' });
 if (wide.w > 180) throw new Error('cardDims should respect max width');
 if (wide.w < 72) throw new Error('cardDims should respect min width');
 
-const truncated = truncateLabel('节点A👨‍👩‍👧‍👦AlphaBeta超长标签', 120);
+const truncated = truncateLabel('NodeA👨‍👩‍👧‍👦AlphaBetaSuperLongLabel', 120);
 if (!truncated.truncated) throw new Error('expected long label to truncate');
 if (!truncated.text.endsWith('…')) throw new Error('truncated label should end with ellipsis');
 if (truncated.text.includes('undefined')) throw new Error('truncate output corrupted');

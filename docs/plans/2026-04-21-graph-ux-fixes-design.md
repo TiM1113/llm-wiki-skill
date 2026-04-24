@@ -1,43 +1,43 @@
-# 设计：水彩图谱 5 项 UX 修复
+# Design: 5 UX fixes for the watercolor graph
 
-生成于 2026-04-21 · 分支 main · 模式：Builder（既有功能打磨）
-状态：DRAFT · v3（已吸收 /plan-ceo-review 11 项 + /plan-eng-review 9 项反馈）
+Generated on 2026-04-21 · branch main · mode: Builder (polish of existing features)
+Status: DRAFT · v3 (incorporated 11 items from /plan-ceo-review + 9 items from /plan-eng-review)
 
-## 问题陈述
+## Problem Statement
 
-水彩风格交互图谱（v3.0，PR #17 引入）在实际使用中暴露 5 个 UX 问题：
+The watercolor-style interactive graph (v3.0, introduced in PR #17) exposed 5 UX problems in actual use:
 
-1. **抽屉布局失衡**：小屏下"相邻节点"区无滚动也无高度限制，相邻过多时会把"知识区"挤压甚至完全遮挡
-2. **卡片文字溢出**：节点卡片宽度硬封顶 180px，但长标签不做截断，文字溢出卡片边界
-3. **小地图常驻**：右上角小地图固定占用 180×130 空间，无法折叠隐藏
-4. **工具按钮功能不可见**：右上角三个图标按钮（重排 / 居中 / Tweaks）没有可见标签，原生 `title` tooltip 延迟且丑，首次用户不知作用
-5. **项目地址位置隐蔽**：`llm-wiki-skill` GitHub 链接藏在 footer 右侧 11px 小字，用户难以发现
+1. **Drawer layout imbalance**: On small screens, the "neighbor nodes" section has no scrolling and no height cap; when there are too many neighbors they squeeze or even fully cover the "knowledge area"
+2. **Card text overflow**: Node card width is hard-capped at 180px, but long labels are not truncated and text overflows the card boundary
+3. **Minimap always visible**: The top-right minimap is fixed-occupying 180×130 space and cannot be folded away
+4. **Tool button functions invisible**: The three icon buttons at the top right (relayout / center / Tweaks) have no visible labels; native `title` tooltips are delayed and ugly, and first-time users don't know what they do
+5. **Project link in a hidden location**: The `llm-wiki-skill` GitHub link is tucked into footer-right in 11px tiny text and is hard for users to discover
 
-## 核心原则（来自用户）
+## Core Principles (from user)
 
-- **知识区为主，相邻节点为辅**：问题 1 的分配策略要体现这一点，知识区永远拿到大多数空间
-- **用户使用角度优先**：所有方案以首次使用体验为准绳，不以"代码最省事"为准绳
+- **Knowledge area primary, neighbor nodes secondary**: The allocation strategy for problem 1 must reflect this — the knowledge area always gets the majority of the space
+- **User's-perspective first**: All solutions take first-use experience as the yardstick, not "least effort for code"
 
-## 约束
+## Constraints
 
-- 只改 `templates/graph-styles/wash/header.html` 和 `templates/graph-styles/wash/graph-wash.js`
-- 不改图谱数据结构、构建脚本、或节点布局算法
-- 保持水彩（wash）视觉主题与现有 Tweaks 变体的兼容性
-- 回归测试必须全部通过（`tests/graph-html-*.regression-*.sh`）
+- Only modify `templates/graph-styles/wash/header.html` and `templates/graph-styles/wash/graph-wash.js`
+- Don't modify graph data structure, build scripts, or node layout algorithms
+- Preserve compatibility with watercolor (wash) visual theme and existing Tweaks variants
+- Regression tests must all pass (`tests/graph-html-*.regression-*.sh`)
 
-## 前置共识（Premises）
+## Premises
 
-1. ✅ 五个问题都是既有功能打磨，不涉及图谱架构改动
-2. ✅ 五个一起做，不分批
-3. ✅ 每条方案的取舍以"用户使用角度"为准
+1. ✅ All five issues are polish of existing features, not graph architecture changes
+2. ✅ Do all five together, not in batches
+3. ✅ Each solution's trade-offs use "user's perspective" as the yardstick
 
-## 推荐方案（逐条）
+## Recommended Solution (item by item)
 
-### 问题 1：抽屉改为"主-辅"双区独立滚动 + 相邻节点可折叠
+### Problem 1: Drawer becomes "primary-secondary" dual-area independent scrolling + collapsible neighbor nodes
 
-**根因**：`.drawer-inner` 用 flexbox 但 `.drawer-neighbors` 没有 `max-height` 也没有独立 `overflow`，`flex: 1` 的 `.drawer-body` 因 flex-basis=0 无力对抗按内容撑开的邻居区。
+**Root cause**: `.drawer-inner` uses flexbox but `.drawer-neighbors` has no `max-height` and no independent `overflow`; the `flex: 1` `.drawer-body` has flex-basis=0 and is powerless against the neighbor area expanding per-content.
 
-**方案（header.html）**：
+**Solution (header.html)**:
 
 ```css
 .drawer-inner {
@@ -46,29 +46,29 @@
   overflow: hidden;
 }
 .drawer-body {
-  flex: 1 1 0;           /* 知识区为主，吃掉剩余空间 */
+  flex: 1 1 0;           /* knowledge area primary, eats remaining space */
   overflow-y: auto;
-  min-height: 0;         /* 允许在 flex 中正确收缩 */
+  min-height: 0;         /* allow proper shrinking in flex */
 }
 .drawer-neighbors {
   flex-shrink: 0;
-  max-height: 35vh;       /* 上限约屏幕高的 1/3，不抢主区 */
-  overflow-y: auto;       /* 自己内部滚 */
+  max-height: 35vh;       /* cap at ~1/3 screen height, doesn't steal from main area */
+  overflow-y: auto;       /* scrolls internally */
   border-top: 1px dashed var(--paper-ink-faint);
 }
 .drawer-neighbors[data-collapsed="1"] {
-  max-height: 40px;       /* 折叠后只剩标题条 */
+  max-height: 40px;       /* after collapse, only title bar remains */
   overflow: hidden;
 }
 .drawer-neighbors h4 {
-  cursor: pointer;        /* 点标题触发折叠 */
+  cursor: pointer;        /* click title to toggle collapse */
   user-select: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 .drawer-neighbors h4::after {
-  content: "⌃";           /* 折叠指示箭头 */
+  content: "⌃";           /* collapse indicator arrow */
   font-family: var(--font-hand);
   transition: transform 180ms;
 }
@@ -77,14 +77,14 @@
 }
 ```
 
-**方案（graph-wash.js，约 25 行新增）**：
+**Solution (graph-wash.js, ~25 new lines)**:
 
 ```js
-// 注意：drawer 的 DOM 骨架（.drawer-neighbors > h4 + #nb-list）在 header.html 里是静态的，
-// openDetailDrawer() 每次只清空 #nb-list 的 innerHTML，不会重建 h4。
-// 所以这里的监听器在 init 时绑定一次即可，不会泄漏。
+// Note: The drawer's DOM skeleton (.drawer-neighbors > h4 + #nb-list) is static in header.html,
+// openDetailDrawer() only clears #nb-list's innerHTML each time, doesn't rebuild h4.
+// So the listener here only needs to bind once at init; no leak.
 
-// 标题改为可聚焦按钮语义 + aria-expanded 状态
+// Title becomes focusable button semantics + aria-expanded state
 const h4 = drawerNeighbors.querySelector("h4");
 h4.setAttribute("tabindex", "0");
 h4.setAttribute("role", "button");
@@ -94,7 +94,7 @@ function applyNeighborsCollapsed(collapsed) {
   h4.setAttribute("aria-expanded", collapsed ? "false" : "true");
 }
 
-// 初始化：默认展开（首次用户能直接看到邻居内容）
+// Initialize: default expanded (first-time users can directly see neighbor content)
 const savedCollapsed = safeLocalStorage.get("wiki-neighbors-collapsed") === "1";
 applyNeighborsCollapsed(savedCollapsed);
 
@@ -113,28 +113,28 @@ h4.addEventListener("keydown", (e) => {
 });
 ```
 
-**默认状态：展开**。理由：首次用户需要看到邻居列表才能发现折叠这个功能；如果默认折叠就成了隐藏功能，与"用户使用角度"原则冲突。
+**Default state: expanded**. Reason: First-time users need to see the neighbor list to discover the collapse feature; if collapsed by default it becomes a hidden feature, conflicting with the "user's perspective" principle.
 
-**交付行为**：
-- 邻居 0~5 条：按内容高度展开，不浪费空间
-- 邻居 20+ 条：容器最多占 35vh，内部滚动条
-- 用户想专注阅读：点击或回车/空格键一键折叠"相邻节点"标题
-- 折叠偏好跨会话持久（localStorage 不可用时只影响本次会话，见"共享工具"一节）
+**Delivered behavior**:
+- Neighbors 0~5: expand per content height, don't waste space
+- Neighbors 20+: container takes at most 35vh, internal scrollbar
+- User wants to focus on reading: click or Enter/Space key to one-click collapse the "neighbor nodes" title
+- Collapse preference persists across sessions (when localStorage is unavailable only affects current session, see "Shared utilities" section)
 
 ---
 
-### 问题 2：卡片标签截断 + SVG 原生 tooltip 显示全名
+### Problem 2: Card label truncation + SVG native tooltip showing full name
 
-**根因**：`cardDims()` 用 `Math.min(180, w + pad)` 封顶卡片宽度，但 `.text()` 直接写完整 label，SVG 文字不自动截断。
+**Root cause**: `cardDims()` uses `Math.min(180, w + pad)` to cap card width, but `.text()` writes the full label directly; SVG text doesn't auto-truncate.
 
-**方案（graph-wash.js）**：
+**Solution (graph-wash.js)**:
 
-新增工具函数 `truncateLabel(label, maxWidth)`：
+Add utility function `truncateLabel(label, maxWidth)`:
 
 ```js
-// 用 Intl.Segmenter 遍历字素簇（grapheme cluster），不是 code point。
-// 这样 ZWJ 连接的 emoji（如 👨‍👩‍👧‍👦）被当作一个整体处理，不会截在中间产生半个表情。
-// 现代浏览器全支持，零新依赖。
+// Use Intl.Segmenter to iterate graphemes (grapheme clusters), not code points.
+// This treats ZWJ-connected emoji (like 👨‍👩‍👧‍👦) as a whole, not splitting mid-emoji.
+// Fully supported in modern browsers, zero new dependencies.
 const labelSegmenter = new Intl.Segmenter("zh", { granularity: "grapheme" });
 
 function truncateLabel(label, maxWidth) {
@@ -143,7 +143,7 @@ function truncateLabel(label, maxWidth) {
     return { text: "", truncated: false };
   }
 
-  // 与 cardDims 一致的字符宽度估算
+  // Character width estimation consistent with cardDims
   const charWidth = g => /[一-鿿]/.test(g) ? 15 : 8.5;
   const pad = 22;
   const ellipsis = "…";
@@ -167,57 +167,57 @@ function truncateLabel(label, maxWidth) {
 }
 ```
 
-在 `renderNodes()` 卡片渲染分支里：
+In the `renderNodes()` card rendering branch:
 
 ```js
 const { text: displayLabel, truncated } = truncateLabel(d.label || d.id, 180);
 gg.append("text").attr("class", "node-label node-label--in")
   .attr("text-anchor", "middle").attr("dy", "0.35em")
   .text(displayLabel);
-// SVG 原生 tooltip，hover 时浏览器显示完整名
+// SVG native tooltip, browser shows full name on hover
 if (truncated) {
   gg.append("title").text(d.label || d.id);
 }
 ```
 
-**为什么用 SVG `<title>`，而不是像问题 4 那样做自定义 tooltip**：
+**Why use SVG `<title>` instead of custom tooltip like in problem 4**:
 
-这里看似与问题 4"批判原生 tooltip 延迟"矛盾，其实定位不同：
+This seems to contradict problem 4's "criticism of native tooltip delay", but the positioning is different:
 
-- **问题 4 的工具按钮**：tooltip 是**主入口**——用户必须看到标签文字才知道按钮能做什么，1 秒延迟直接伤首次体验，所以换成可见文字 + 自定义 tooltip。
-- **问题 2 的节点标签**：`<title>` 只是**辅助补充**——用户查看完整名的**主入口**是点击节点进入抽屉（抽屉里永远显示完整 label）。hover 看到完整名只是"能查也行、不查也能用"的便利，1 秒延迟可以接受。
+- **Problem 4's tool buttons**: Tooltip is the **primary entry point** — users must see the label text to know what the button does; 1-second delay directly hurts first experience, so switch to visible text + custom tooltip.
+- **Problem 2's node labels**: `<title>` is only an **auxiliary supplement** — the **primary entry point** for users to see the full name is clicking the node to open the drawer (the drawer always shows the full label). Seeing the full name on hover is just a "can check or not, still usable" convenience; 1-second delay is acceptable.
 
-这样选的额外收益：零依赖、零新 CSS、无障碍读屏天然兼容、不会和问题 4 的 `data-tip` hover 样式互相干扰。
+Additional benefits of this choice: zero dependencies, zero new CSS, native accessibility screen reader compatibility, no interference with problem 4's `data-tip` hover style.
 
-**已知局限**（详见"已知局限"一节）：`charWidth` 对 emoji、全角标点、阿拉伯数字宽度估算不够精确，极端情况下可能截断偏多或偏少 1~2 字。MVP 可接受，有需要再精化。
+**Known limitations** (see "Known limitations" section): `charWidth` estimates for emoji, full-width punctuation, and Arabic digits aren't precise; extreme cases may over-truncate or under-truncate by 1-2 chars. MVP acceptable, refine later if needed.
 
-**交付行为**：
-- 短标签不受影响
-- 长标签显示前 N 字 + "…"，鼠标悬停 1 秒左右浏览器弹完整名
-- 点击节点抽屉里永远是完整名（不变）
+**Delivered behavior**:
+- Short labels unaffected
+- Long labels display first N chars + "…"; ~1 second hover shows browser tooltip with full name
+- Drawer always shows full name when node is clicked (unchanged)
 
 ---
 
-### 问题 3：小地图可折叠（带持久化）
+### Problem 3: Minimap collapsible (with persistence)
 
-**方案（header.html）**：
+**Solution (header.html)**:
 
-小地图容器加折叠按钮和折叠态样式：
+Add collapse button and collapsed state styles to minimap container:
 
 ```html
-<!-- 当前 header.html:1035 的 .minimap div 没有 id，需要在这次改动中补上 id="minimap" -->
+<!-- Current header.html:1035 .minimap div has no id; need to add id="minimap" in this change -->
 <div class="minimap" id="minimap" data-collapsed="0">
-  <div class="minimap__label">小地图</div>
+  <div class="minimap__label">Minimap</div>
   <button class="minimap__toggle" id="minimap-toggle"
-          aria-label="折叠小地图" aria-expanded="true"
-          data-tip="折叠/展开小地图">⌄</button>
+          aria-label="Collapse minimap" aria-expanded="true"
+          data-tip="Collapse / expand minimap">⌄</button>
   <svg id="minimap-svg"></svg>
 </div>
 ```
 
 ```css
 .minimap {
-  /* 既有规则不变 */
+  /* existing rules unchanged */
   transition: width 220ms, height 220ms;
 }
 .minimap[data-collapsed="1"] {
@@ -250,7 +250,7 @@ if (truncated) {
 }
 ```
 
-**方案（graph-wash.js）**：
+**Solution (graph-wash.js)**:
 
 ```js
 const minimap = document.getElementById("minimap");
@@ -259,7 +259,7 @@ const toggleBtn = document.getElementById("minimap-toggle");
 function applyMinimapCollapsed(collapsed) {
   minimap.setAttribute("data-collapsed", collapsed ? "1" : "0");
   toggleBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
-  toggleBtn.setAttribute("aria-label", collapsed ? "展开小地图" : "折叠小地图");
+  toggleBtn.setAttribute("aria-label", collapsed ? "Expand minimap" : "Collapse minimap");
 }
 
 applyMinimapCollapsed(safeLocalStorage.get("wiki-minimap-collapsed") === "1");
@@ -272,34 +272,34 @@ toggleBtn.addEventListener("click", (e) => {
 });
 ```
 
-**交付行为**：
-- 默认展开（首次使用直接看到功能）
-- 点击右上小箭头折叠成一条 88×22 的标签条
-- 折叠状态下仍能看到"小地图"标签，用户知道它在哪、怎么展开
-- 设置跨会话持久
+**Delivered behavior**:
+- Default expanded (first use directly sees functionality)
+- Click small arrow at top-right to collapse into a 88×22 label bar
+- Can still see "Minimap" label when collapsed, user knows where it is and how to expand
+- Settings persist across sessions
 
 ---
 
-### 问题 4：工具按钮改为"图标 + 文字"组合，窄屏退化为图标 + 自定义 tooltip
+### Problem 4: Tool buttons become "icon + text" combination; on narrow screens degrade to icon + custom tooltip
 
-**根因**：原生 `title` tooltip 延迟 ~1 秒出现、视觉不统一、首次用户完全无法预判功能。
+**Root cause**: Native `title` tooltip has ~1 second delay, inconsistent visuals, first-time users have no way to predict function.
 
-**方案（header.html）**：
+**Solution (header.html)**:
 
-按钮从纯 icon 改为 icon + 文字（基准态）：
+Buttons change from pure icon to icon + text (baseline state):
 
 ```html
-<button class="iconbtn iconbtn--labeled" id="btn-refit" data-tip="重新布置节点">
+<button class="iconbtn iconbtn--labeled" id="btn-refit" data-tip="Relayout nodes">
   <svg>...</svg>
-  <span class="iconbtn__text">重排</span>
+  <span class="iconbtn__text">Relayout</span>
 </button>
-<button class="iconbtn iconbtn--labeled" id="btn-fit" data-tip="适应画布 · 回到居中">
+<button class="iconbtn iconbtn--labeled" id="btn-fit" data-tip="Fit canvas · center">
   <svg>...</svg>
-  <span class="iconbtn__text">居中</span>
+  <span class="iconbtn__text">Center</span>
 </button>
-<button class="iconbtn iconbtn--labeled" id="btn-tweaks" data-tip="视觉设置">
+<button class="iconbtn iconbtn--labeled" id="btn-tweaks" data-tip="Visual settings">
   <svg>...</svg>
-  <span class="iconbtn__text">设置</span>
+  <span class="iconbtn__text">Settings</span>
 </button>
 ```
 
@@ -318,7 +318,7 @@ toggleBtn.addEventListener("click", (e) => {
 }
 .iconbtn--labeled:hover .iconbtn__text { color: var(--paper-ink); }
 
-/* 自定义即时 tooltip（无延迟） */
+/* Custom instant tooltip (no delay) */
 [data-tip] { position: relative; }
 [data-tip]:hover::after,
 [data-tip]:focus-visible::after {
@@ -326,8 +326,8 @@ toggleBtn.addEventListener("click", (e) => {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  max-width: min(240px, calc(100vw - 24px));  /* 极窄屏 fallback：不超出视口 */
-  white-space: normal;                         /* 允许窄屏换行，不做无限拉长 */
+  max-width: min(240px, calc(100vw - 24px));  /* extreme narrow screen fallback: don't exceed viewport */
+  white-space: normal;                         /* allow wrapping on narrow screens, no infinite stretching */
   word-break: break-word;
   padding: 5px 10px;
   background: var(--paper-ink);
@@ -340,7 +340,7 @@ toggleBtn.addEventListener("click", (e) => {
   pointer-events: none;
   animation: tip-in 140ms ease-out;
 }
-/* 极窄屏（<480px）右边三个按钮贴边，tooltip 贴右会被裁：改为相对画面靠右但不越界 */
+/* Extreme narrow (<480px): three right-edge buttons stick to the edge, right-aligned tooltip gets clipped: change to right-biased but not overflowing */
 @media (max-width: 480px) {
   [data-tip]:hover::after,
   [data-tip]:focus-visible::after {
@@ -358,39 +358,39 @@ toggleBtn.addEventListener("click", (e) => {
   [data-tip]:focus-visible::after { animation: none; }
 }
 
-/* 窄屏：回到纯图标模式，但保留 data-tip 做补充说明 */
+/* Narrow screen: back to pure icon mode, but keep data-tip for supplementary explanation */
 @media (max-width: 900px) {
   .iconbtn--labeled { width: 34px; padding: 0; }
   .iconbtn__text { display: none; }
 }
 ```
 
-**Tweaks 面板未来扩展点**：在 Tweaks 面板的 JS 初始化处加一行 `// TODO: neighbor-area-max-height slider (35vh default)` 占位注释，标记将来可加"邻居区上限"滑块的位置。零实现代价，给后续迭代留锚点。
+**Tweaks panel future extension point**: In the Tweaks panel JS init, add a placeholder comment `// TODO: neighbor-area-max-height slider (35vh default)`, marking where a "neighbor area cap" slider could be added later. Zero implementation cost, leaves an anchor for future iteration.
 
-**为什么 "图标+文字" 常驻是首选**：
-- 首次用户零学习成本，一眼看懂
-- 不强迫用户 hover 才能发现功能（tooltip 本质是把可见 UI 藏起来的妥协）
-- 宽屏空间完全够用（三个按钮总宽不到 220px）
-- 窄屏自动退化为原来的纯图标 + 自定义 tooltip
+**Why "icon + text" always-on is the top choice**:
+- First-time users have zero learning cost, understand at a glance
+- Doesn't force users to hover to discover the function (tooltip is essentially a compromise of hiding visible UI)
+- Wide-screen space is plenty (three buttons total < 220px)
+- Narrow screen auto-degrades to original pure icon + custom tooltip
 
-**交付行为**：
-- ≥900px：按钮展示 icon + 文字（重排 / 居中 / 设置）
-- <900px：退化为圆形图标按钮，hover 立即弹自定义 tooltip（无延迟，视觉统一）
-- 移除不必要的原生 `title` 属性（避免与 data-tip 双弹）
+**Delivered behavior**:
+- ≥900px: buttons show icon + text (Relayout / Center / Settings)
+- <900px: degrade to circular icon buttons, hover immediately shows custom tooltip (no delay, unified visuals)
+- Remove unnecessary native `title` attributes (avoid double-popping with data-tip)
 
 ---
 
-### 问题 5：项目地址提升到左上角品牌区
+### Problem 5: Promote project link to top-left brand area
 
-**方案（header.html）**：
+**Solution (header.html)**:
 
-把 `.brand__mark`（"llm-wiki" 小圆点 logo）包成指向仓库的 `<a>`：
+Wrap `.brand__mark` ("llm-wiki" small dot logo) as an `<a>` pointing to the repo:
 
 ```html
 <header class="brand">
   <a class="brand__mark" href="https://github.com/sdyckjq-lab/llm-wiki-skill"
      target="_blank" rel="noopener"
-     data-tip="查看 llm-wiki 项目 · GitHub">
+     data-tip="View llm-wiki project · GitHub">
     llm-wiki
   </a>
   <div class="brand__title" id="wiki-title">__WIKI_TITLE__</div>
@@ -400,13 +400,13 @@ toggleBtn.addEventListener("click", (e) => {
 
 ```css
 .brand__mark {
-  /* 既有规则保留（包括基线 transform: rotate(-0.6deg)）+ 下面几条 */
+  /* keep existing rules (including baseline transform: rotate(-0.6deg)) + the following */
   text-decoration: none;
   color: var(--paper-ink);
   transition: transform 200ms;
 }
-/* 注意：基线已经 rotate(-0.6deg)，hover 再多转 -0.6deg 到 -1.2deg，
-   视觉效果是"更偏斜"而不是"转正"。这才是"轻微抖动提示可点"的正确方向。 */
+/* Note: baseline already rotate(-0.6deg); hover rotates further to -1.2deg
+   so visual effect is "more tilted" rather than "rotated upright". This is the correct direction for "slight jitter hinting clickability". */
 .brand__mark:hover,
 .brand__mark:focus-visible {
   transform: rotate(-1.2deg) translateY(-1px);
@@ -417,34 +417,34 @@ toggleBtn.addEventListener("click", (e) => {
   border-radius: 4px;
 }
 .brand__mark:hover::before {
-  box-shadow: 2px 3px 0 rgba(0,0,0,0.2);  /* 水彩圆点阴影加深 */
+  box-shadow: 2px 3px 0 rgba(0,0,0,0.2);  /* watercolor dot shadow deepens */
 }
 @media (prefers-reduced-motion: reduce) {
   .brand__mark { transition: none; }
   .brand__mark:hover,
-  .brand__mark:focus-visible { transform: rotate(-0.6deg); }  /* 保持基线，不动 */
+  .brand__mark:focus-visible { transform: rotate(-0.6deg); }  /* keep baseline, don't move */
 }
 ```
 
-**footer 里重复的 "generated by llm-wiki" 链接**：保留。理由：
-- footer 是开发者习惯找归因链接的位置，删掉反而出乎意料
-- brand 区提升是"把入口变醒目"，不是"把原入口删掉"
-- 两处链接都指向同一 URL，不会造成迷惑
+**The duplicate "generated by llm-wiki" link in footer**: Keep. Reason:
+- Footer is where developers habitually look for attribution links; removing it would be unexpected
+- Brand area promotion is "making the entry prominent", not "deleting the original entry"
+- Both links point to the same URL, no confusion
 
-**未来路径依赖提醒**（NICE-TO-HAVE）：现在 "brand → GitHub" 的语义是"品牌即项目地址"。将来如果 llm-wiki 新增一个概览/索引页（例如 "所有知识库首页"），这块就会变成语义冲突点——brand 该指向项目仓库还是本地概览页？届时建议：brand 改指向概览页，项目仓库退回 footer；或者 brand 保留指仓库、另起一个"首页"按钮。本轮不做决策，仅标记这是一个**未来 UX 决策点**。
+**Future path dependency reminder** (NICE-TO-HAVE): Currently "brand → GitHub" has semantics "brand equals project link". In the future if llm-wiki adds an overview/index page (e.g. "all knowledge bases home"), this becomes a semantic conflict — should brand point to project repo or to local overview page? When that happens, recommend: brand points to overview page, project repo goes back to footer; or brand continues pointing to repo and add a "home" button. Don't decide this round; just mark this as a **future UX decision point**.
 
-**交付行为**：
-- 左上角 "llm-wiki" 可点，hover / 键盘聚焦都有明显反馈（轻微旋转 + 阴影加深 + focus ring），符合水彩手绘风格
-- `prefers-reduced-motion` 用户看到的是静态反馈，不旋转
-- 点击新标签页打开仓库
+**Delivered behavior**:
+- Top-left "llm-wiki" text clickable, hover / keyboard focus both have clear feedback (slight rotation + deeper shadow + focus ring), matches watercolor hand-drawn style
+- `prefers-reduced-motion` users see static feedback, no rotation
+- Click opens repo in new tab
 
 ---
 
-## 共享工具：safeLocalStorage
+## Shared utility: safeLocalStorage
 
-问题 1 和问题 3 都依赖 localStorage 做偏好持久化。但 localStorage 存在已知失败模式：Safari 隐私模式抛异常、第三方 cookie 禁用、存储配额满、企业环境策略限制。**直接写 `localStorage.getItem/setItem` 会让这些用户一进来就白屏**。
+Problems 1 and 3 both rely on localStorage for preference persistence. But localStorage has known failure modes: Safari private mode throws exceptions, third-party cookies disabled, storage quota full, enterprise policy restrictions. **Writing `localStorage.getItem/setItem` directly would white-screen these users on entry**.
 
-在 `graph-wash.js` 的 IIFE 顶部（state 声明之后、任何读写 localStorage 的初始化之前，约文件前 20 行内）加一个模块级 helper，所有 localStorage 调用都走它：
+At the top of `graph-wash.js`'s IIFE (after state declaration, before any localStorage read/write init, within the first ~20 lines), add a module-level helper that all localStorage calls go through:
 
 ```js
 const safeLocalStorage = {
@@ -459,206 +459,206 @@ const safeLocalStorage = {
 };
 ```
 
-**失败降级行为**：读失败 → 返回 null → 走默认值（邻居展开、小地图展开）；写失败 → 静默 warn，本次会话内折叠/展开仍然工作，只是跨会话不持久。用户感知：功能全部可用，只是"这次点的折叠，下次刷新恢复默认"。可接受。
+**Failure degradation behavior**: Read fails → returns null → default values (neighbors expanded, minimap expanded); write fails → silent warn, within the session collapse/expand still works, just doesn't persist across sessions. User perceives: all functionality works, just "this time's collapse reverts to default on next refresh". Acceptable.
 
 ---
 
-## 无障碍（a11y）要求
+## Accessibility (a11y) requirements
 
-三处必须做：
+Three required items:
 
-1. **相邻节点折叠标题**（问题 1）：`<h4>` 加 `tabindex="0"` + `role="button"` + `aria-expanded` 状态 + Enter/Space 键盘触发。代码已写在问题 1 方案里。
-2. **小地图折叠按钮**（问题 3）：`aria-expanded` 反映当前状态；`aria-label` 随状态切换（"折叠小地图" / "展开小地图"）。代码已写在问题 3 方案里。
-3. **品牌链接动效**（问题 5）：`@media (prefers-reduced-motion: reduce)` 覆盖 hover 旋转，改为静态视觉反馈；同时加 `:focus-visible` 焦点环保证键盘可达。代码已写在问题 5 方案里。
+1. **Neighbor collapse title** (problem 1): `<h4>` gets `tabindex="0"` + `role="button"` + `aria-expanded` state + Enter/Space keyboard triggers. Code is in problem 1 solution.
+2. **Minimap collapse button** (problem 3): `aria-expanded` reflects current state; `aria-label` switches with state ("Collapse minimap" / "Expand minimap"). Code is in problem 3 solution.
+3. **Brand link animation** (problem 5): `@media (prefers-reduced-motion: reduce)` overrides hover rotation to static visual feedback; add `:focus-visible` focus ring for keyboard accessibility. Code is in problem 5 solution.
 
-**验收方法**：
-- 只用键盘（Tab / Enter / Space）能完成：打开抽屉 → 折叠邻居 → 折叠小地图 → 跳转 brand 链接
-- macOS 系统设置里开"减少动态效果"后，刷新页面，brand hover 没有旋转、tooltip 没有淡入动画
-
----
-
-## 已知局限
-
-1. **`truncateLabel` 字符宽度估算不精确**：`charWidth` 用一个简单正则区分 CJK 和 Latin，但以下情况会偏差：
-   - Emoji（通常双宽度，但不在 CJK 正则范围内）
-   - 全角标点（"，。！？"）估算为 CJK 宽度，基本准确；半角标点估算为 Latin 宽度，也基本准确；但全角空格、半角空格、破折号有偏差
-   - 阿拉伯数字、泰文、阿拉伯文、印地文均走 Latin 8.5px，实际宽度可能偏小或偏大
-
-   **影响范围**：极端情况下卡片里可能多截或少截 1~2 字，或 "…" 紧贴边缘。MVP 可接受。
-   **缓解方案**（不在本轮做）：用 `getComputedTextLength()` 在渲染后实测宽度再截断，代价是两次布局。如将来出现大量非 CJK/Latin 标签，再做精化。
-
-   **注意（v3 已修）**：截断点**不会**在 ZWJ 连接的 emoji 中间落下（如 👨‍👩‍👧‍👦 不会被拆成"👨"）——通过 `Intl.Segmenter` 按字素簇遍历，不是 code point。宽度估算是独立问题。
-
-2. **`localStorage` 跨会话持久在部分环境不可用**（Safari 隐私模式、禁第三方 cookie、企业策略）：已通过 `safeLocalStorage` 降级，本次会话功能完整，只是刷新会回默认。
-   **用户可感知症状**：在这类环境下用户可能疑惑"我昨天折叠了邻居，今天怎么又展开了？"。本轮不加 UI 提示（避免首次使用就被打扰），只在 README / CHANGELOG 中提一句"折叠偏好依赖 localStorage"。
+**Acceptance method**:
+- Using only keyboard (Tab / Enter / Space) can complete: open drawer → collapse neighbors → collapse minimap → navigate to brand link
+- After enabling "Reduce motion" in macOS system settings, refresh page, brand hover has no rotation, tooltip has no fade-in animation
 
 ---
 
-## NOT in scope（显式延后）
+## Known limitations
 
-本 PR 不做的事，各配一行理由：
+1. **`truncateLabel` character width estimation imprecise**: `charWidth` uses a simple regex to distinguish CJK and Latin, but the following cases deviate:
+   - Emoji (usually double-width, but not in CJK regex range)
+   - Full-width punctuation ("，。！？") estimated as CJK width, basically accurate; half-width punctuation estimated as Latin width, also basically accurate; but full-width space, half-width space, and dash have deviations
+   - Arabic digits, Thai, Arabic, Hindi all go through Latin 8.5px; actual width may be smaller or larger
 
-- **`zoom-ctrl` +/- 按钮的 tooltip 统一**：两个按钮仍用原生 `title`（1 秒延迟）。理由：scope 只收用户明确投诉的三个右上按钮；zoom 按钮本身图标就是通用符号（+/−），首次用户能猜，延迟 tooltip 影响小。下一轮 UX 批次再统一。
-- **`truncateLabel` 宽度估算完美化**（非 CJK/Latin 脚本的精确宽度）：用 `getComputedTextLength()` 实测是标准解法，但代价是两次布局。目前知识库没有大量阿拉伯/泰文节点，MVP 可接受偏差。记为 Known Limitation。
-- **引入 JS 单测框架**（bun test / vitest / node:test）：跨项目决策，不该藏在 UX 修复 PR 里。`truncateLabel` 等纯函数本轮通过多长度 golden fixture 间接覆盖。建议加入 TODOS.md 作为独立决策。
-- **fixture 自动 diff 白名单工具**：理想但超范围。本轮通过"每个问题独立 commit + 每次只看小 diff"的纪律缓解。
-- **Tweaks 面板 "邻居区上限 (vh)" 滑块**：零代价占位注释已加，真正实现延后。
-- **`localStorage` 失败时的用户 UI 提示**：首次使用就弹"你的浏览器不支持偏好持久化"太吵，延后。
-- **概览/首页路由出现后 brand 链接的重新指向**：长期决策点，v2 已标记，本轮不做。
+   **Impact**: In extreme cases card may over-truncate or under-truncate by 1-2 chars, or "…" tight against edge. MVP acceptable.
+   **Mitigation** (not done this round): Use `getComputedTextLength()` to measure width after rendering and then truncate; cost is two layouts. If many non-CJK/Latin labels appear in the future, refine then.
 
----
+   **Note (fixed in v3)**: Truncation **won't** fall in the middle of a ZWJ-connected emoji (e.g. 👨‍👩‍👧‍👦 won't be split into "👨") — achieved by iterating grapheme clusters via `Intl.Segmenter`, not code points. Width estimation is a separate issue.
 
-## 可观察性
-
-加几处 `console.warn`，用户遇到问题时方便把浏览器控制台日志发回给我们定位：
-
-1. `safeLocalStorage.get/set` 的 catch 分支（已在工具函数里）
-2. `truncateLabel` 拿到空 label 或非字符串时：`console.warn("[wiki] truncateLabel: invalid input", label)`
-3. 小地图 SVG 初始化失败时（defensive）：`console.warn("[wiki] minimap render failed:", err)`
-
-不做上报、不做埋点，纯本地 warn。零新依赖。
+2. **`localStorage` cross-session persistence unavailable in some environments** (Safari private mode, third-party cookies disabled, enterprise policy): mitigated via `safeLocalStorage`; within-session functionality is complete, refresh reverts to default.
+   **User-perceivable symptom**: In these environments user may wonder "I collapsed neighbors yesterday, why are they expanded again today?". Don't add UI hint this round (avoid disturbing on first use); just mention in README / CHANGELOG: "collapse preference depends on localStorage".
 
 ---
 
-## 备选方案（记录以便回头对照）
+## NOT in scope (explicitly deferred)
 
-### 问题 1 的 B 方案：统一滚动
-知识 + 相邻节点塞进同一个滚动容器。优点：改动最小。缺点：查邻居要先滚过整篇知识。**否决理由**：违反"相邻节点为辅"（它占据了知识区末尾，反而成了必经之路）。
+Things this PR doesn't do, each with a one-line reason:
 
-### 问题 4 的 A 方案：纯图标 + 自定义 tooltip
-只加 tooltip 不加可见文字。**否决理由**：违反"用户使用角度"——首次进入仍然需要 hover 三次才能摸清，工具栏功能不该藏起来。
-
-### 问题 5 的 C 方案：footer 链接删除
-避免重复。**否决理由**：开发者习惯看 footer，保留冗余对体验无损。
-
----
-
-## 成功标准
-
-1. **问题 1**：相邻节点 30 条时，知识区仍能看到至少 65% 屏幕高度的内容；折叠后知识区占满
-2. **问题 2**：节点 label 长度 ≥ 20 字时，卡片边缘无文字溢出；hover 能看到完整名
-3. **问题 3**：折叠小地图后右上角只剩一条 88×22 的标签；刷新页面后保持折叠
-4. **问题 4**：宽屏（≥900px）三个按钮文字可见；窄屏按钮 hover ≤150ms 内弹出自定义 tooltip
-5. **问题 5**：左上角 llm-wiki 字样可点、hover 有视觉反馈、点击跳转到 GitHub
+- **Unify `zoom-ctrl` +/- button tooltips**: Two buttons still use native `title` (1 second delay). Reason: scope only covers the three top-right buttons the user explicitly complained about; zoom button icons are universal symbols (+/−), first-time users can guess, delay tooltip has small impact. Next UX batch will unify.
+- **`truncateLabel` width estimation perfection** (precise width for non-CJK/Latin scripts): `getComputedTextLength()` measurement is the standard solution, but cost is two layouts. Currently knowledge base has no mass Arabic/Thai nodes, MVP accepts deviation. Marked as Known Limitation.
+- **Introduce JS unit test framework** (bun test / vitest / node:test): Cross-project decision; shouldn't hide in a UX fix PR. Pure functions like `truncateLabel` are covered indirectly via multi-length golden fixtures this round. Recommend adding to TODOS.md as an independent decision.
+- **Fixture auto-diff whitelist tooling**: Ideal but out of scope. This round relies on discipline of "each problem in separate commit + only small diff to review each time" as mitigation.
+- **Tweaks panel "neighbor area cap (vh)" slider**: Zero-cost placeholder comment added, real implementation deferred.
+- **User UI hint on `localStorage` failure**: Popping "Your browser doesn't support preference persistence" on first use is too noisy, deferred.
+- **Brand link re-pointing after overview/home route appears**: Long-term decision point, v2 has marked it, not in this round.
 
 ---
 
-## 测试与回归清单
+## Observability
 
-**测试框架选择**：项目现有 `tests/graph-html-*.regression-*.sh` 全部是 shell + DOM 字符串断言 + golden fixture diff 风格。**不**引入 JS 单测框架（bun test / vitest）——那是跨项目决策，不该藏在本 UX 修复 PR 里。JS 纯函数（`truncateLabel` / `safeLocalStorage`）的覆盖通过**多标签长度的 golden fixture** 间接验证。如果后续发现这层太粗，再做独立 PR 引入单测框架（见"NOT in scope"）。
+Add a few `console.warn` so users can send browser console logs for us to locate issues:
 
-**分步 fixture 更新（避免一次性大 diff）**：每完成一个问题的 commit 后，就跑一次 `scripts/build-graph-html.sh` 生成 HTML → 用 `diff tests/expected/graph-interactive-basic.html <(生成的 HTML)` 看 diff → **确认 diff 行数和本 commit 描述吻合**（如问题 5 应该只看到 brand 变 a、新增 CSS；问题 4 应该只看到按钮结构 + tooltip CSS）→ 覆盖 fixture。这样每次眼睛只看 1-2 处变化，遗漏无关回归的概率大大降低。
+1. `safeLocalStorage.get/set` catch branches (already in utility function)
+2. `truncateLabel` receives empty label or non-string: `console.warn("[wiki] truncateLabel: invalid input", label)`
+3. Minimap SVG init failure (defensive): `console.warn("[wiki] minimap render failed:", err)`
 
-### 改动完成后的验证清单：
-
-1. **跑现有回归**（每个 commit 后都跑一遍）：
-   - `tests/graph-html-mobile.regression-1.sh`（小屏下布局——问题 1 核心回归）
-   - `tests/graph-html-styles.regression-1.sh`（样式一致性——问题 4/5 会影响；依赖分步 fixture 更新）
-   - `tests/graph-html-search.regression-1.sh`（搜索功能——不应受影响）
-
-2. **新增回归（本 PR 必做）**：
-   - `tests/graph-html-drawer-neighbors.regression-1.sh`：fixture 含 30+ 邻居，断言知识区高度占比 ≥ 60%，断言 h4 有 `aria-expanded` 属性
-   - `tests/graph-html-long-label.regression-1.sh`：fixture 含多种长度标签（5/15/25 字 CJK、5/15/25 字 Latin、混合、含 emoji），断言长标签 DOM 中 label 带 `…`、带 `<title>` 元素；短标签不带
-   - `tests/graph-html-minimap.regression-1.sh`：断言 `#minimap` 容器有 id、`#minimap-toggle` 存在且有 `aria-expanded`
-   - `tests/graph-html-brand-link.regression-1.sh`：断言 `.brand__mark` 是 `<a href="https://github.com/sdyckjq-lab/llm-wiki-skill"` 且 `rel="noopener"`，断言 CSS 包含 `:focus-visible`
-   - `tests/graph-html-a11y.regression-1.sh`：断言 CSS 包含 `@media (prefers-reduced-motion: reduce)` 规则，断言 h4/minimap-toggle 都有正确的 role + tabindex + aria-\* 属性组合
-
-3. **手动验收清单**（codex 终端跑 ingest → graph 后）：
-   - 小屏（<600px 宽度）打开抽屉，相邻 > 20 时知识仍可读
-   - 长标签节点卡片视觉无溢出，长标签中含 ZWJ emoji（如 👨‍👩‍👧‍👦）截断后不出现半个表情
-   - 小地图折叠 → 刷新 → 仍折叠
-   - 三个工具按钮文字可见
-   - 左上 llm-wiki 点击跳转正确
-   - 只用键盘完成：Tab 到邻居标题 → Enter 折叠 → Tab 到小地图 toggle → Enter 折叠 → Tab 到 brand 链接 → Enter 跳转
-   - 系统开"减少动态效果"后，brand hover 不转（只保留基线 rotate -0.6deg）、tooltip 不淡入
-   - **Safari 隐私模式**打开页面，点折叠邻居，刷新——确认没报错；本次会话能折叠但刷新回默认展开（localStorage 配额失败降级）
+No reporting, no telemetry, purely local warns. Zero new dependencies.
 
 ---
 
-## 分步实施建议（可选，留给实施阶段决定）
+## Alternatives considered (for future reference)
 
-如果一次性改完压力太大，建议顺序：
+### Problem 1 alternative B: unified scrolling
+Knowledge + neighbor nodes in same scrolling container. Pros: minimal change. Cons: to check neighbors must scroll past entire knowledge. **Rejection reason**: violates "neighbors are secondary" (they occupy the end of the knowledge area, instead becoming a required pass-through).
 
-0. **先加 `safeLocalStorage` helper**（5 行，纯新增，无视觉影响）→ 问题 1/3 都要用，放最前面一次搞定
-1. **问题 5**（最小改动，10 行内，low risk）→ 先试水流程；同步更新金标准 fixture
-2. **问题 2**（纯 JS，无全局 CSS 冲突）
-3. **问题 3**（小地图独立模块）
-4. **问题 4**（涉及工具栏重排，需回归样式测试）
-5. **✋ 人工验收卡点**：跑 `scripts/build-graph-html.sh` 生成 HTML，浏览器打开看一眼右上角三个按钮 + tooltip + 小地图折叠 + brand 链接都正常，再继续。问题 4 和问题 1 都大改 header.html 的 CSS，中间隔一次验收能把样式回归问题提前抓出来，比混在一个大 commit 里查容易。
-6. **问题 1**（最核心，涉及抽屉整体布局，最后做保证其他验收时抽屉可用）
-7. **收尾**：更新 fixture → 跑全部回归 → 更新 CHANGELOG / README
+### Problem 4 alternative A: pure icon + custom tooltip
+Only add tooltip without visible text. **Rejection reason**: violates "user's perspective" — first entry still requires hovering three times to figure out; toolbar functions shouldn't be hidden.
 
-每一步单独 commit，符合项目 `CLAUDE.md` 的分步提交规则。
+### Problem 5 alternative C: delete footer link
+Avoid duplication. **Rejection reason**: developers habitually check footer; keeping redundancy has no cost to experience.
 
 ---
 
-## 分发计划
+## Success criteria
 
-不涉及新产物分发：这个 skill 用户通过 `install.sh` 安装后直接得到新模板。按项目 `CLAUDE.md` 的推送前规则：
-
-- 更新 `CHANGELOG.md`（新增版本条目 —— 按当前 v3.0 递增到 v3.1）
-- 更新 `README.md` 功能列表（"抽屉可折叠邻居 / 节点标签截断 / 小地图可折叠 / 工具按钮带文字 / 品牌区可点击"）
-- 推送前按三层测试规则跑一遍（第一层 Claude Code 自动跑；第二/三层 codex 终端手动跑工作流）
-
----
-
-## 开放问题
-
-1. 问题 4 中按钮文字选 "重排 / 居中 / 设置" 还是更长的 "重新布置 / 适应画布 / 视觉设置"？短版省空间、视觉更紧凑；长版更清晰。**默认：短版**，如果用户反馈不清楚再调。
-2. 问题 1 的 `max-height: 35vh` 是否合适？可能需要在真实使用中微调（30vh / 40vh）。初版用 35vh，留 Tweaks 面板里加一个"邻居区上限"的滑块做后续迭代。**默认：暂不加滑块**，保持方案最小。
-3. 问题 5 的 hover 效果旋转角度（-1.2deg）是否过头？水彩风格整体就有手绘抖动，再加旋转可能叠加。**默认：保守做 -0.4deg**，之后按视觉反馈调。
+1. **Problem 1**: With 30 neighbors, knowledge area still shows at least 65% of screen height's content; after collapse knowledge area fills
+2. **Problem 2**: When node label length ≥ 20 chars, card edge has no text overflow; hover reveals full name
+3. **Problem 3**: After collapsing minimap, top-right has only a 88×22 label; refresh keeps collapsed
+4. **Problem 4**: On wide screens (≥900px) all three buttons' text visible; narrow screen button hover ≤150ms pops custom tooltip
+5. **Problem 5**: Top-left llm-wiki text clickable, hover has visual feedback, click navigates to GitHub
 
 ---
 
-## 下一步
+## Testing and regression checklist
 
-- 用户确认这份文档 → 实施阶段（建议新开分支 `fix/graph-ux-batch-2026-04`，按"分步实施建议"顺序 commit）
-- 或用户先选择优先级/方案调整 → 回到本文档迭代
+**Test framework choice**: Existing project `tests/graph-html-*.regression-*.sh` are all shell + DOM string assertions + golden fixture diff style. **Do not** introduce JS unit test framework (bun test / vitest) — cross-project decision, shouldn't hide in this UX fix PR. JS pure functions (`truncateLabel` / `safeLocalStorage`) coverage is achieved indirectly via **multi-label-length golden fixtures**. If this layer proves too coarse later, introduce unit test framework in a separate PR (see "NOT in scope").
 
-实施入口推荐：直接告诉我"按这个方案做"，我就开分支动手。如果想再看一份独立视角的审查，可以调用 `/plan-eng-review`。
+**Step-by-step fixture update (avoid one-shot large diff)**: After completing each problem's commit, run `scripts/build-graph-html.sh` to generate HTML → `diff tests/expected/graph-interactive-basic.html <(generated HTML)` to see diff → **confirm diff lines match this commit's description** (e.g., problem 5 should only show brand becoming a, new CSS; problem 4 should only show button structure + tooltip CSS) → overwrite fixture. This way each eye only sees 1-2 changes, greatly reducing probability of missing unrelated regressions.
+
+### Verification checklist after change completion:
+
+1. **Run existing regressions** (run after each commit):
+   - `tests/graph-html-mobile.regression-1.sh` (small-screen layout — core regression for problem 1)
+   - `tests/graph-html-styles.regression-1.sh` (style consistency — problems 4/5 affect this; depends on step-by-step fixture update)
+   - `tests/graph-html-search.regression-1.sh` (search — shouldn't be affected)
+
+2. **New regressions (required in this PR)**:
+   - `tests/graph-html-drawer-neighbors.regression-1.sh`: fixture with 30+ neighbors, assert knowledge area height ratio ≥ 60%, assert h4 has `aria-expanded` attribute
+   - `tests/graph-html-long-label.regression-1.sh`: fixture with various label lengths (5/15/25 char CJK, 5/15/25 char Latin, mixed, with emoji), assert long label DOM has label with `…`, with `<title>` element; short labels don't
+   - `tests/graph-html-minimap.regression-1.sh`: assert `#minimap` container has id, `#minimap-toggle` exists and has `aria-expanded`
+   - `tests/graph-html-brand-link.regression-1.sh`: assert `.brand__mark` is `<a href="https://github.com/sdyckjq-lab/llm-wiki-skill"` with `rel="noopener"`; assert CSS contains `:focus-visible`
+   - `tests/graph-html-a11y.regression-1.sh`: assert CSS contains `@media (prefers-reduced-motion: reduce)` rule; assert h4/minimap-toggle both have correct role + tabindex + aria-* attribute combo
+
+3. **Manual acceptance checklist** (after codex terminal runs ingest → graph):
+   - On small screen (<600px width), open drawer; with > 20 neighbors, knowledge still readable
+   - Long label node cards visually no overflow; long labels containing ZWJ emoji (like 👨‍👩‍👧‍👦) after truncation don't show half an emoji
+   - Collapse minimap → refresh → still collapsed
+   - Three tool button texts visible
+   - Top-left llm-wiki click navigates correctly
+   - Keyboard only: Tab to neighbor title → Enter to collapse → Tab to minimap toggle → Enter to collapse → Tab to brand link → Enter to navigate
+   - With system "Reduce motion" on, brand hover doesn't rotate (stays at baseline rotate -0.6deg), tooltip doesn't fade in
+   - **Safari private mode** open page, click to collapse neighbors, refresh — confirm no errors; within session can collapse but refresh reverts to default expanded (localStorage quota fails, degrades)
 
 ---
 
-## v3 修订记录（2026-04-21）
+## Step-by-step implementation suggestion (optional, leave to implementation phase)
 
-v3 吸收 `/plan-eng-review` 的 9 条工程反馈：
+If all at once is too much pressure, recommended order:
 
-**CRITICAL（🔴 4 条）**
-1. **brand hover 旋转方向修正**：`.brand__mark` 基线已经 `rotate(-0.6deg)`，hover 用 `-0.4deg` 会"转正"，和"抖动提示可点"意图相反。改为 `rotate(-1.2deg) translateY(-1px)`（基线 +0.6deg 偏斜）。问题 5 方案已修。
-2. **`truncateLabel` 字素簇遍历**：`for...of` 按 code point 遍历，ZWJ 连接的 emoji（如 👨‍👩‍👧‍👦）会被截成"半个表情 + …"。改用 `Intl.Segmenter` 按 grapheme cluster 遍历，现代浏览器全支持，零依赖。问题 2 方案已修。
-3. **测试策略**：项目现有 `tests/graph-html-*.regression-*.sh` 全是 shell + fixture 风格，没有 JS 单测。本 PR **不**引入单测框架（跨项目决策），`truncateLabel` / `safeLocalStorage` 通过多长度 golden fixture 间接覆盖。已在"测试与回归清单"显式说明，并加入 TODOS 候选。
-4. **fixture 分步更新**：原方案"一次性更新 + 人工 diff"太脆弱，7 处独立变化容易漏看。改为"每个问题独立 commit 后都刷新 fixture"，每次只看 1-2 处小 diff。已在"测试与回归清单"改段落。
+0. **First add `safeLocalStorage` helper** (5 lines, pure addition, no visual impact) → problems 1/3 both need it, do first all at once
+1. **Problem 5** (minimal change, within 10 lines, low risk) → first trial of process; sync update golden fixture
+2. **Problem 2** (pure JS, no global CSS conflict)
+3. **Problem 3** (minimap standalone module)
+4. **Problem 4** (involves toolbar rearrangement, needs regression style testing)
+5. **✋ Manual acceptance gate**: Run `scripts/build-graph-html.sh` to generate HTML, open browser to check top-right three buttons + tooltip + minimap collapse + brand link all normal, then continue. Problems 4 and 1 both heavily change header.html CSS; an acceptance gate between them catches style regression issues earlier, easier than investigating within a mixed large commit.
+6. **Problem 1** (most core, involves overall drawer layout, do last to ensure drawer usable during other acceptance)
+7. **Wrap up**: update fixture → run all regressions → update CHANGELOG / README
 
-**WARNING（🟡 4 条）**
-5. **`#minimap` 容器缺 id**：现有 `header.html:1035` 的 `.minimap` 没有 id，plan 的 JS 会拿到 null。已在问题 3 HTML 示例补注释强调这一点。
-6. **`zoom-ctrl` tooltip 显式延后**：右下 +/- 按钮仍用原生 `title`，本轮不动。已加入 "NOT in scope"。
-7. **`safeLocalStorage` 声明位置明确**：写明"IIFE 顶部、state 声明之后、任何 localStorage 读写之前（前 20 行内）"。已在"共享工具"段落补。
-8. **a11y 自动化回归**：新增 `tests/graph-html-a11y.regression-1.sh` + minimap + brand-link 三个 shell 脚本，自动断言 role/tabindex/aria-\* 属性 + `prefers-reduced-motion` CSS 规则存在。已加入"测试与回归清单"。
-
-**NICE-TO-HAVE（🟢 1 条）**
-9. **h4 持久性注释**：加一行说明"openDetailDrawer() 只清空 nb-list，h4 是静态的，监听器绑定一次即可"，避免未来误读。已在问题 1 JS 代码块顶部加注释。
-
-**相关新增 NOT in scope 条目**（源自 #6、#3、#8 等）：zoom-ctrl tooltip、单测框架引入、fixture 自动 diff 工具、truncateLabel 宽度完美化、localStorage 失败 UI 提示。
+Each step separate commit, in line with project `CLAUDE.md` step-by-step commit rule.
 
 ---
 
-## v2 修订记录（2026-04-21）
+## Distribution plan
 
-v2 吸收 `/plan-ceo-review` 审核的 11 条反馈：
+No new artifact distribution: this skill is directly obtained by users after `install.sh`. Per project `CLAUDE.md` pre-push rules:
 
-**CRITICAL（7 条必修）**
-1. 问题 2 的 SVG `<title>` 定位为"辅助 tooltip"，与问题 4 的"tooltip 作主入口"不矛盾，已在问题 2 段落显式说明。
-2. 问题 5 的 `brand__mark` 从 `<div>` 改 `<a>` 会让 `tests/expected/graph-interactive-basic.html` 金标准失效，已在"测试与回归清单"加入同步更新步骤。
-3. 所有 localStorage 调用改走 `safeLocalStorage` helper（try/catch 降级），已新增"共享工具"一节。
-4. 问题 1 邻居折叠默认状态明确为**展开**（首次用户才能发现功能），已在问题 1 段落标注。
-5. 三处 a11y 修正：邻居标题键盘可达 + aria-expanded、小地图 toggle aria-expanded、brand 链接 prefers-reduced-motion + focus-visible，已新增"无障碍要求"一节并融入各方案。
-6. `data-tip` 极窄屏 viewport 溢出 fallback（<480px 改靠左对齐 + max-width），已加入问题 4 CSS。
-7. 实施顺序在问题 4 和问题 1 之间插入人工验收卡点，已更新"分步实施建议"。
+- Update `CHANGELOG.md` (add version entry — current v3.0 increments to v3.1)
+- Update `README.md` feature list ("drawer collapsible neighbors / node label truncation / collapsible minimap / tool buttons with text / clickable brand area")
+- Before push run three-layer test rules (layer 1 Claude Code auto-runs; layer 2/3 codex terminal manually runs workflows)
 
-**WARNING（1 条）**
-8. `truncateLabel` 对 emoji / 全角标点 / 非拉丁字符宽度估算的已知局限，已新增"已知局限"一节。
+---
 
-**NICE-TO-HAVE（3 条）**
-9. "brand → GitHub" 语义的未来路径依赖（概览页/首页出现时），已在问题 5 段落加了未来决策点提醒。
-10. Tweaks 面板"邻居区上限"滑块的占位注释，已在问题 4 段落末尾说明。
-11. `safeLocalStorage` 失败、`truncateLabel` 异常输入、小地图渲染失败的 `console.warn`，已新增"可观察性"一节。
+## Open questions
+
+1. In problem 4 button text choose "Relayout / Center / Settings" or longer "Relay out nodes / Fit canvas / Visual settings"? Short version saves space, visually tighter; long version clearer. **Default: short**; if users feedback unclear, adjust.
+2. Is problem 1's `max-height: 35vh` appropriate? May need fine-tuning in real usage (30vh / 40vh). First version uses 35vh, leave a "neighbor area cap" slider in Tweaks panel for later iteration. **Default: don't add slider yet**, keep solution minimal.
+3. Is problem 5's hover rotation angle (-1.2deg) too much? Watercolor style already has hand-drawn jitter; adding rotation may stack. **Default: conservative -0.4deg**, then tune per visual feedback.
+
+---
+
+## Next step
+
+- User confirms this doc → implementation phase (recommend new branch `fix/graph-ux-batch-2026-04`, commits in "step-by-step implementation suggestion" order)
+- Or user first picks priority/solution adjustment → back to this doc for iteration
+
+Recommended implementation entry: just tell me "do it per this plan", I'll open the branch and start. If you want another independent perspective review, call `/plan-eng-review`.
+
+---
+
+## v3 revision record (2026-04-21)
+
+v3 incorporates 9 engineering feedback items from `/plan-eng-review`:
+
+**CRITICAL (4 items)**
+1. **Brand hover rotation direction fix**: `.brand__mark` baseline is already `rotate(-0.6deg)`; hover using `-0.4deg` would "rotate upright", contrary to "jitter hinting clickability" intent. Changed to `rotate(-1.2deg) translateY(-1px)` (baseline +0.6deg tilt). Problem 5 solution fixed.
+2. **`truncateLabel` grapheme cluster iteration**: `for...of` iterates by code point; ZWJ-connected emoji (like 👨‍👩‍👧‍👦) would be truncated to "half emoji + …". Changed to `Intl.Segmenter` iterating by grapheme clusters, fully supported in modern browsers, zero dependencies. Problem 2 solution fixed.
+3. **Test strategy**: Existing project `tests/graph-html-*.regression-*.sh` is all shell + fixture style, no JS unit tests. This PR **does not** introduce unit test framework (cross-project decision); `truncateLabel` / `safeLocalStorage` covered indirectly via multi-length golden fixtures. Explicitly stated in "Testing and regression checklist", added to TODOS candidates.
+4. **Fixture step-by-step update**: Original "one-shot update + manual diff" was too fragile; 7 independent changes easy to miss. Changed to "refresh fixture after each problem's independent commit", each time only viewing 1-2 small diffs. Updated in "Testing and regression checklist" section.
+
+**WARNING (4 items)**
+5. **`#minimap` container missing id**: Existing `header.html:1035` `.minimap` has no id, plan's JS would get null. Added comment in problem 3 HTML example emphasizing this.
+6. **`zoom-ctrl` tooltip explicitly deferred**: Bottom-right +/- buttons still use native `title`, not touched this round. Added to "NOT in scope".
+7. **`safeLocalStorage` declaration location explicit**: Specified "top of IIFE, after state declaration, before any localStorage read/write (within first 20 lines)". Updated in "Shared utility" section.
+8. **a11y automated regression**: Added `tests/graph-html-a11y.regression-1.sh` + minimap + brand-link three shell scripts, auto-assert role/tabindex/aria-* attributes + `prefers-reduced-motion` CSS rule existence. Added to "Testing and regression checklist".
+
+**NICE-TO-HAVE (1 item)**
+9. **h4 persistence comment**: Added one line saying "openDetailDrawer() only clears nb-list, h4 is static, bind listener once suffices", avoiding future misreading. Added comment at top of problem 1 JS code block.
+
+**Related new NOT in scope entries** (from #6, #3, #8, etc.): zoom-ctrl tooltip, unit test framework introduction, fixture auto-diff tool, truncateLabel width perfection, localStorage failure UI hint.
+
+---
+
+## v2 revision record (2026-04-21)
+
+v2 incorporates 11 feedback items from `/plan-ceo-review`:
+
+**CRITICAL (7 required)**
+1. Problem 2's SVG `<title>` positioned as "auxiliary tooltip", not contradicting problem 4's "tooltip as primary entry". Explicitly stated in problem 2 section.
+2. Problem 5's `brand__mark` changed from `<div>` to `<a>` will invalidate `tests/expected/graph-interactive-basic.html` golden; added sync update step in "Testing and regression checklist".
+3. All localStorage calls go through `safeLocalStorage` helper (try/catch degradation); added "Shared utility" section.
+4. Problem 1 neighbor collapse default state clarified as **expanded** (first-time users can discover feature); annotated in problem 1 section.
+5. Three a11y fixes: neighbor title keyboard-accessible + aria-expanded, minimap toggle aria-expanded, brand link prefers-reduced-motion + focus-visible; added "Accessibility requirements" section and merged into each solution.
+6. `data-tip` extreme narrow screen viewport overflow fallback (<480px changes to left alignment + max-width); added to problem 4 CSS.
+7. Manual acceptance gate inserted between problem 4 and problem 1 implementation order; updated "Step-by-step implementation suggestion".
+
+**WARNING (1 item)**
+8. `truncateLabel` known limitations for emoji / full-width punctuation / non-Latin character width estimation; added "Known limitations" section.
+
+**NICE-TO-HAVE (3 items)**
+9. "brand → GitHub" semantic future path dependency (when overview page/home appears); added future decision point reminder in problem 5 section.
+10. Tweaks panel "neighbor area cap" slider placeholder comment; explained at end of problem 4 section.
+11. `safeLocalStorage` failure, `truncateLabel` abnormal input, minimap render failure `console.warn`; added "Observability" section.

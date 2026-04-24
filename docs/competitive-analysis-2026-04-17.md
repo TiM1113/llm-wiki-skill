@@ -1,151 +1,151 @@
-# 竞品分析报告：llm-wiki-agent vs llm-wiki-skill
+# Competitive Analysis Report: llm-wiki-agent vs llm-wiki-skill
 
-> 针对三个功能方向：Obsidian 集成、知识图谱可视化、arXiv 论文支持
-> 日期：2026-04-17
+> Focusing on three feature directions: Obsidian integration, knowledge graph visualization, arXiv paper support
+> Date: 2026-04-17
 
-## 项目概况
+## Project Overview
 
-| | **llm-wiki-skill（本项目）** | **llm-wiki-agent** |
+| | **llm-wiki-skill (this project)** | **llm-wiki-agent** |
 |---|---|---|
-| **地址** | https://github.com/sdyckjq-lab/llm-wiki-skill | https://github.com/SamurAIGPT/llm-wiki-agent |
-| **定位** | Harness 附属 Skill，10 个工作流的知识库 | 自维护知识库 Agent，4 个核心工作流 |
-| **语言** | Shell + Markdown | Python + Markdown |
+| **URL** | https://github.com/TiM1113/llm-wiki-skill | https://github.com/SamurAIGPT/llm-wiki-agent |
+| **Positioning** | Harness-attached Skill, 10 workflow knowledge base | Self-maintained knowledge base Agent, 4 core workflows |
+| **Language** | Shell + Markdown | Python + Markdown |
 | **Stars** | — | ~1,971 |
-| **数据采集** | **强**：10 种来源适配器（网页/X/微信/YouTube/知乎/PDF/笔记等） | **无**：需手动准备素材到 raw/ |
-| **运行方式** | 依附 Claude Code / Codex / OpenClaw | 独立 Python 脚本 或 Agent 内运行 |
+| **Data Collection** | **Strong**: source adapters (web/X/YouTube/PDF/notes etc.) | **None**: Requires manual preparation of materials to raw/ |
+| **Runtime** | Runs inside Claude Code / Codex / OpenClaw | Independent Python script or Agent-internal |
 
 ---
 
-## 一、Obsidian 集成
+## 1. Obsidian Integration
 
-### 本项目现状
+### Current State
 
-已有基础兼容：
-- 所有页面使用 `[[wikilink]]` 双向链接（Obsidian 原生支持）
-- YAML frontmatter（tags/created/updated 等）
-- Mermaid 图谱在 Obsidian 中可渲染
-- init 时提示"推荐用 Obsidian 打开"
+Basic compatibility exists:
+- All pages use `[[wikilink]]` bidirectional links (Obsidian native support)
+- YAML frontmatter (tags/created/updated etc.)
+- Mermaid graphs renderable in Obsidian
+- init prompts "Recommend opening with Obsidian"
 
-**缺失**：
-- 没有 symlink 挂载指南
-- 没有 Web Clipper 集成说明
-- 没有 Dataview 查询示例
-- 没有 `.obsidian/` 工作区配置
+**Missing**:
+- No symlink mounting guide
+- No Web Clipper integration instructions
+- No Dataview query examples
+- No `.obsidian/` workspace configuration
 
-### llm-wiki-agent 做法
+### llm-wiki-agent Approach
 
-提供三层集成：
-1. **Symlink 模式**：`ln -sfn ~/llm-wiki-agent/wiki ~/your-obsidian-vault/wiki`，wiki 目录映射到 Vault
-2. **Web Clipper**：明确推荐用 Obsidian Web Clipper 插件剪藏网页，存到 `raw/` 等 ingest
-3. **Graph View 优化**：建议排除 `index.md` 和 `log.md`（`-file:index.md -file:log.md`），避免它们成为图谱引力中心
-4. **Dataview**：概念性提到利用 frontmatter 的 `type` 和 `tags` 字段查询（未给具体示例）
+Three-tier integration:
+1. **Symlink mode**: `ln -sfn ~/llm-wiki-agent/wiki ~/your-obsidian-vault/wiki`, wiki directory mapped to Vault
+2. **Web Clipper**: Explicitly recommends Obsidian Web Clipper plugin for clipping web pages, saved to `raw/` for ingest
+3. **Graph View optimization**: Suggests excluding `index.md` and `log.md` (`-file:index.md -file:log.md`), preventing them from becoming graph gravity centers
+4. **Dataview**: Conceptually mentions using frontmatter `type` and `tags` fields for queries (no concrete examples given)
 
-### 借鉴建议
+### Recommendations
 
-**P0 — 在文档中补充 Obsidian 使用指南**：
-- symlink 命令示例
-- Web Clipper 配置说明（剪藏到 `raw/` 对应子目录）
-- Graph View 过滤建议（排除 index.md / log.md）
-- Dataview 查询示例（按 type/sources 过滤）
+**P0 — Add Obsidian usage guide in documentation**:
+- Symlink command examples
+- Web Clipper configuration instructions (clip to corresponding `raw/` subdirectory)
+- Graph View filter suggestions (exclude index.md / log.md)
+- Dataview query examples (filter by type/sources)
 
-实现成本极低（纯文档），收益大——用户最常问的就是"怎么和 Obsidian 配合"。
-
----
-
-## 二、知识图谱可视化
-
-### 本项目现状
-
-**graph 工作流**（SKILL.md）：
-- 扫描所有 `[[wikilink]]`，建立页面关系
-- 输出 Mermaid `graph LR` 到 `wiki/knowledge-graph.md`
-- 超过 50 条关系时只保留被引用最多的 30 个节点
-- 关系类型词汇表（实现/依赖/对比/矛盾/衍生）可选标注，AI 不自动打标
-
-**局限**：
-- 只看显式 wikilink，不推断隐含关系
-- 静态 Mermaid 图，无交互（搜索/过滤/点击展开）
-- 无社区检测（看不出知识聚类）
-- 无图谱健康报告
-
-### llm-wiki-agent 做法
-
-`build_graph.py`（~1244 行），核心设计：
-
-**两阶段边构建**：
-- Pass 1 — 确定性：正则提取 `[[wikilink]]`，置信度 1.0
-- Pass 2 — 语义推断：LLM 分析每个页面，推断隐式关系。>= 0.7 为 INFERRED，< 0.7 为 AMBIGUOUS
-
-**Louvain 社区检测**：`nx.community.louvain_communities(G, seed=42)`，确定性种子，自动发现知识聚类
-
-**健康报告**：孤立节点、上帝节点（度 > mean+2sigma）、脆弱桥接（社区间仅 1 条边）、健康评分
-
-**vis.js 交互式 HTML**：搜索框、边类型复选框（EXTRACTED/INFERRED/AMBIGUOUS）、置信度滑块、右侧抽屉展示 Markdown 内容、内置 Markdown 渲染器
-
-**缓存 + 断点续传**：SHA256 增量，JSONL 记录已处理页面
-
-### 借鉴建议
-
-按优先级分步实现：
-
-**P1 — 增强现有 Mermaid 图谱**（低成本，纯 SKILL.md 改动）：
-- graph 工作流增加"隐含关系推断"环节（让 AI 在提取 wikilink 之外，额外标注未显式链接但有语义关系的节点对）
-- 输出增加社区聚类标注（用 Mermaid subgraph 分组）
-- 增加图谱健康摘要（孤立节点数、最大连通分量）
-
-**P2 — 生成 vis.js 交互式 HTML**（中等成本，需新增脚本）：
-- 参考 llm-wiki-agent 的 vis.js 模板，做自包含 HTML
-- 搜索、过滤、点击展开
-- 这一步需要新建 `scripts/build-graph-html.sh` 或类似脚本
-
-**不建议照搬**：
-- Louvain 社区检测需要 Python + networkx，与本项目 Shell/Agent 架构不匹配
-- 可让 AI 在 graph 工作流中用"人工"方式识别社区（成本高但无需新依赖）
+Implementation cost is minimal (pure documentation), high ROI — the most common user question is "how do I use this with Obsidian."
 
 ---
 
-## 三、arXiv 论文支持
+## 2. Knowledge Graph Visualization
 
-### 本项目现状
+### Current State
 
-- PDF 已是核心内置来源（`local_pdf`，`raw/pdfs/`）
-- agent 可直接读取 PDF 内容并进入标准 ingest
-- **无 arXiv 专用功能**：不识别 arXiv URL、不自动下载、不提取论文元数据
+**graph workflow** (SKILL.md):
+- Scans all `[[wikilinks]]`, builds page relationships
+- Outputs Mermaid `graph LR` to `wiki/knowledge-graph.md`
+- Keeps only top 30 most-referenced nodes when exceeding 50 relationships
+- Relationship type vocabulary (implements/depends-on/compares-with/contradicts/derived-from) optionally annotated, AI doesn't auto-label
 
-### llm-wiki-agent 做法
+**Limitations**:
+- Only looks at explicit wikilinks, doesn't infer implicit relationships
+- Static Mermaid graph, no interaction (search/filter/click-to-expand)
+- No community detection (can't see knowledge clusters)
+- No graph health report
 
-- 同样无内置 arXiv 支持
-- 提供 `file_to_markdown.py`（基于微软 markitdown）转 PDF -> Markdown
-- 流程：手动下载 PDF -> 转换 -> 放入 `raw/` -> ingest
+### llm-wiki-agent Approach
 
-### 借鉴建议
+`build_graph.py` (~1244 lines), core design:
 
-**P0 — 在 source-registry.tsv 增加 arXiv 来源类型**：
-- 新增 `arxiv_paper` 来源，匹配规则 `url_host:arxiv.org`
-- ingest 时：从 URL 提取论文 ID -> 用 Harness 的 web 能力下载 PDF -> 存入 `raw/pdfs/` -> 进入标准 PDF ingest
-- 元数据提取（标题/作者/摘要）可在 ingest Step 1 中让 AI 从内容中提取
+**Two-phase edge construction**:
+- Pass 1 — Deterministic: regex extraction of `[[wikilink]]`, confidence 1.0
+- Pass 2 — Semantic inference: LLM analyzes each page, infers implicit relationships. >= 0.7 is INFERRED, < 0.7 is AMBIGUOUS
 
-**成本**：主要是 source-registry.tsv 一行配置 + SKILL.md ingest 路由逻辑小改，不需要新脚本。
+**Louvain community detection**: `nx.community.louvain_communities(G, seed=42)`, deterministic seed, auto-discovers knowledge clusters
+
+**Health report**: Isolated nodes, god nodes (degree > mean+2sigma), fragile bridges (only 1 edge between communities), health score
+
+**vis.js interactive HTML**: Search box, edge type checkboxes (EXTRACTED/INFERRED/AMBIGUOUS), confidence slider, right drawer showing Markdown content, built-in Markdown renderer
+
+**Cache + resume**: SHA256 incremental, JSONL records processed pages
+
+### Recommendations
+
+Implement in priority stages:
+
+**P1 — Enhance existing Mermaid graph** (low cost, pure SKILL.md changes):
+- Add "implicit relationship inference" step to graph workflow (have AI annotate semantically related node pairs beyond explicit wikilinks)
+- Add community clustering annotations to output (use Mermaid subgraph grouping)
+- Add graph health summary (isolated node count, largest connected component)
+
+**P2 — Generate vis.js interactive HTML** (medium cost, requires new scripts):
+- Reference llm-wiki-agent's vis.js template for self-contained HTML
+- Search, filter, click-to-expand
+- Requires new `scripts/build-graph-html.sh` or similar
+
+**Not recommended to copy directly**:
+- Louvain community detection requires Python + networkx, mismatches this project's Shell/Agent architecture
+- Can have AI identify communities "manually" in the graph workflow (higher cost but no new dependencies)
 
 ---
 
-## 四、附带发现：其他值得借鉴的特性
+## 3. arXiv Paper Support
 
-| 特性 | llm-wiki-agent 实现 | 借鉴价值 |
-|------|-------------------|---------|
-| **heal.py 自修复** | 自动找到被引用 3+ 次但没有页面的实体，用 LLM 生成定义页 | **高** — 可以在 lint 工作流中加入"自动修复"环节 |
-| **refresh.py 哈希检测** | 检测 raw/ 文件变更自动触发 re-ingest | **中** — 本项目已有 cache.sh，可扩展为 `status` 工作流中提示变更文件 |
-| **域特定模板** | 日记/会议记录等专用模板 | **低** — 当前通用模板已够用，按需添加即可 |
-| **图谱感知 lint** | 检查 hub stubs / fragile bridges / isolated communities | **中** — 依赖 P1 图谱增强完成后自然加入 |
+### Current State
+
+- PDF is already a core built-in source (`local_pdf`, `raw/pdfs/`)
+- Agent can directly read PDF content and enter standard ingest
+- **No arXiv-specific features**: doesn't recognize arXiv URLs, no auto-download, no paper metadata extraction
+
+### llm-wiki-agent Approach
+
+- Also no built-in arXiv support
+- Provides `file_to_markdown.py` (based on Microsoft markitdown) for PDF -> Markdown conversion
+- Flow: manually download PDF -> convert -> place in `raw/` -> ingest
+
+### Recommendations
+
+**P0 — Add arXiv source type to source-registry.tsv**:
+- Add `arxiv_paper` source, match rule `url_host:arxiv.org`
+- During ingest: extract paper ID from URL -> use Harness web capability to download PDF -> save to `raw/pdfs/` -> enter standard PDF ingest
+- Metadata extraction (title/author/abstract) can be handled by AI in ingest Step 1
+
+**Cost**: Mainly one configuration line in source-registry.tsv + minor SKILL.md ingest routing logic change, no new scripts needed.
 
 ---
 
-## 五、总结：建议实施优先级
+## 4. Additional Findings: Other Notable Features
 
-| 优先级 | 功能 | 预估工作量 | 类型 |
-|--------|------|-----------|------|
-| **P0** | Obsidian 使用指南（文档） | 0.5 天 | 纯文档 |
-| **P0** | arXiv 来源路由（source-registry + ingest 路由） | 0.5 天 | 配置 + 小改 |
-| **P1** | 图谱增强（隐含关系推断 + 社区标注 + 健康摘要） | 1 天 | SKILL.md 改动 |
-| **P2** | vis.js 交互式图谱 HTML | 2-3 天 | 新增脚本 + 模板 |
-| **P1** | lint 自修复（heal 概念） | 0.5 天 | SKILL.md 改动 |
+| Feature | llm-wiki-agent Implementation | Value for Us |
+|---------|-------------------------------|-------------|
+| **heal.py self-repair** | Auto-finds entities referenced 3+ times without pages, uses LLM to generate definition pages | **High** — Can add "auto-fix" step to lint workflow |
+| **refresh.py hash detection** | Detects raw/ file changes to auto-trigger re-ingest | **Medium** — Project already has cache.sh, can extend to `status` workflow showing changed files |
+| **Domain-specific templates** | Journal/meeting notes etc. specialized templates | **Low** — Current general templates are sufficient, add as needed |
+| **Graph-aware lint** | Checks hub stubs / fragile bridges / isolated communities | **Medium** — Naturally follows after P1 graph enhancement |
+
+---
+
+## 5. Summary: Recommended Implementation Priority
+
+| Priority | Feature | Estimated Effort | Type |
+|----------|---------|-----------------|------|
+| **P0** | Obsidian usage guide (documentation) | 0.5 days | Pure documentation |
+| **P0** | arXiv source routing (source-registry + ingest routing) | 0.5 days | Config + minor change |
+| **P1** | Graph enhancement (implicit relationship inference + community annotation + health summary) | 1 day | SKILL.md changes |
+| **P2** | vis.js interactive graph HTML | 2-3 days | New scripts + templates |
+| **P1** | lint self-repair (heal concept) | 0.5 days | SKILL.md changes |

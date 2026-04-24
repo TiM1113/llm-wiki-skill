@@ -59,7 +59,7 @@ The preflight classifier makes the separation explicit:
 case "$source_category" in
   manual_only)
     state="unsupported"
-    recovery_action="直接走手动入口"
+    recovery_action="use manual entry directly"
     ;;
   optional_adapter)
     # classify missing adapter vs missing environment vs available

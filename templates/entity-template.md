@@ -1,5 +1,5 @@
 ---
-tags: [实体]
+tags: [entity]
 created: {{DATE}}
 updated: {{DATE}}
 sources: []
@@ -7,24 +7,24 @@ sources: []
 
 # {{ENTITY_NAME}}
 
-> 一句话描述这个实体是什么
+> One-sentence description of what this entity is
 
-## 简介
+## Introduction
 
-（这个实体的基本介绍）
+(Basic overview of this entity)
 
-## 关键信息
+## Key Information
 
-- **类型**：（人物 / 组织 / 概念 / 工具 / 事件）
-- **领域**：（所属领域）
-- **相关概念**：（关联的其他实体）
+- **Type**: (person / organization / concept / tool / event)
+- **Domain**: (field or area)
+- **Related concepts**: (other linked entities)
 
-## 详细内容
+## Detailed Content
 
-（从素材中提取的关于这个实体的详细信息）
+(Detailed information about this entity extracted from sources)
 
-## 不同素材中的观点
+## Perspectives Across Sources
 
-（不同素材对同一个实体的不同描述或评价，标注来源）
+(Different descriptions or evaluations of this entity from different sources, with attribution)
 
-## 相关页面
+## Related Pages

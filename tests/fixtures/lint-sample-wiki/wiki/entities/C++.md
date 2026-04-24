@@ -1,6 +1,6 @@
 # C++
 
-用来验证正则特殊字符不误判。C++ 的文件名里有 `+`，是正则的量词。
-脚本必须用 grep -F 字面匹配，否则会误报。
+Used to verify that regex special characters are not misidentified. The filename of C++ contains `+`, which is a regex quantifier.
+The script must use grep -F for literal matching, otherwise it will produce false positives.
 
-被 [[Other]] 引用，因此非孤立。
+Referenced by [[Other]], so it is not an orphan.

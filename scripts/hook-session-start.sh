@@ -1,5 +1,5 @@
 #!/bin/bash
-# SessionStart hook: 会话开始时注入 wiki 上下文（只触发一次）
+# SessionStart hook: inject wiki context at session start (fires once)
 
 set -euo pipefail
 
@@ -24,7 +24,7 @@ import os
 import sys
 
 wiki_path = os.path.realpath(sys.argv[1])
-message = f"[llm-wiki] 检测到知识库: {wiki_path}/index.md，回答问题时优先查阅 wiki 内容获取上下文"
+message = f"[llm-wiki] Wiki detected: {wiki_path}/index.md — prioritize wiki content for context when answering questions"
 
 print(json.dumps({
     "hookSpecificOutput": {

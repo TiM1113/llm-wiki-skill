@@ -3,65 +3,65 @@ date: 2026-04-05
 topic: multi-agent-platform-support
 ---
 
-# llm-wiki 多 Agent 平台原生支持
+# llm-wiki Multi-Agent Platform Native Support
 
 ## Problem Frame
 
-当前 `llm-wiki` 虽然已经有部分 Codex 说明，但整体仍主要按 Claude Code 的习惯编写。用户把同一个 GitHub 链接交给不同 agent 后，能否自动安装、安装后是否完整可用、遇到环境问题 agent 是否知道怎么处理，这些都不稳定。
+Although `llm-wiki` already has some Codex documentation, the overall codebase is still primarily written following Claude Code conventions. When users hand the same GitHub link to different agents, whether auto-installation works, whether full functionality is available after installation, and whether the agent knows how to handle environment issues -- all of these are unstable.
 
-这直接抬高了使用门槛，也限制了分发方式。目标不是让用户理解平台差异，而是让用户无论使用 Claude Code、Codex 还是 OpenClaw，都尽量通过同一个仓库链接完成安装，并获得完整功能。
+This directly raises the usage barrier and limits distribution methods. The goal is not to make users understand platform differences, but to let users install via the same repo link regardless of whether they use Claude Code, Codex, or OpenClaw, and get full functionality.
 
 ## Requirements
 
-**统一入口**
-- R1. 项目必须提供单一官方仓库入口。用户应能够把同一个 GitHub 链接交给 Claude Code、Codex、OpenClaw 中任意一个 agent 进行安装。
-- R2. 项目必须同时支持“agent 自动安装”与“README 一键安装命令”两条入口，但产品优先级以“agent 自动安装”成功率为最高。
-- R3. 项目对外表达必须从“这是给某一个平台用的 skill”升级为“这是一个可被多个 agent 平台原生安装和使用的知识库能力”。
+**Unified Entry**
+- R1. The project must provide a single official repo entry. Users should be able to hand the same GitHub link to any of Claude Code, Codex, or OpenClaw agents for installation.
+- R2. The project must support both “agent auto-install” and “README one-click install command” entry points, but product priority places “agent auto-install” success rate as highest.
+- R3. The project's external messaging must upgrade from “this is a skill for one platform” to “this is a knowledge base capability that can be natively installed and used by multiple agent platforms.”
 
-**完整能力**
-- R4. 第一版多平台支持不得通过删减功能换取兼容。当前对外承诺的初始化、素材消化、批量消化、查询、综述、健康检查、状态查看、知识图谱，都必须在 Claude Code、Codex、OpenClaw 上保持完整可用。
-- R5. 用户在任一目标平台上的核心使用路径必须一致到足够简单：安装完成后，用户可以直接让 agent 初始化知识库、添加素材、查询和生成综述，而无需重新学习一套新说法。
-- R6. 若某些素材类型或流程依赖额外环境能力，项目必须由 agent 主动发现、主动处理、主动汇报，而不是让用户自行排查。
+**Complete Capabilities**
+- R4. The first version of multi-platform support must not trade feature reduction for compatibility. All currently promised capabilities -- initialization, material digestion, batch digestion, query, synthesis, health check, status viewing, and knowledge graph -- must remain fully available on Claude Code, Codex, and OpenClaw.
+- R5. The core usage path on any target platform must be consistent and simple enough: after installation, users can directly have the agent initialize a wiki, add materials, query, and generate syntheses without learning new terminology.
+- R6. If certain material types or processes depend on additional environment capabilities, the project must have the agent proactively discover, handle, and report these, rather than leaving users to troubleshoot.
 
-**平台原生体验**
-- R7. 每个平台都必须有自己能直接看懂的安装与使用入口，避免让同一个说明文件同时夹杂多个平台的操作习惯。
-- R8. 项目内部必须把“知识库核心规则”与“平台适配层”拆开，使平台差异只落在薄适配层中，而不是散落在核心能力描述和模板里。
-- R9. 对平台差异的处理必须优先体现在安装入口、提问方式、文件读写指引、依赖能力调用方式和报错恢复策略上；知识库目录结构、模板、内容规则必须尽量共享。
+**Platform-Native Experience**
+- R7. Each platform must have its own installation and usage entry that it can directly understand, avoiding mixing multiple platforms' operational conventions in one document.
+- R8. The project must internally separate “wiki core rules” from “platform adapter layer,” so platform differences only reside in thin adapter layers, not scattered across core capability descriptions and templates.
+- R9. Platform difference handling must primarily manifest in installation entry, prompting style, file read/write guidance, dependency invocation methods, and error recovery strategies; wiki directory structure, templates, and content rules must be shared as much as possible.
 
-**安装与恢复**
-- R10. 安装流程必须尽量自动处理依赖检查、依赖安装和必要初始化，减少用户手动步骤。
-- R11. 当自动安装遇到不可绕过的外部条件时，允许的用户参与应被限制在“同意授权 / 登录”和“允许浏览器或环境能力”这类最小动作内。
-- R12. 项目必须避免把成功路径建立在“外部依赖 skill 恰好在所有平台都兼容”这个前提上。关键能力应逐步收回到本项目可控范围内。
+**Installation & Recovery**
+- R10. The install flow must auto-handle dependency checks, dependency installation, and necessary initialization as much as possible, minimizing manual steps.
+- R11. When auto-install encounters unavoidable external conditions, user participation should be limited to minimal actions like “grant authorization / login” and “allow browser or environment capabilities.”
+- R12. The project must avoid building the success path on the premise that “external dependency skills happen to be compatible across all platforms.” Critical capabilities should be gradually internalized within the project's control.
 
 ## Success Criteria
 
-- 用户把同一个 GitHub 链接交给 Claude Code、Codex、OpenClaw 任意一个 agent，agent 都能识别安装方式并完成安装。
-- 安装完成后，三个平台都能完成完整工作流，而不是只支持其中一部分。
-- 用户在大多数场景下不需要手动阅读安装文档，只有遇到登录或环境授权时才需要确认。
-- README、仓库说明、安装脚本和 skill 入口不再把某一个平台写成唯一默认平台。
-- 后续新增第四个平台时，主要新增工作集中在适配层，而不是重写整套知识库逻辑。
+- When users hand the same GitHub link to any of Claude Code, Codex, or OpenClaw agents, the agent can identify the installation method and complete installation.
+- After installation, all three platforms can complete full workflows, not just a subset.
+- Users don't need to manually read install docs in most scenarios; confirmation is only needed for login or environment authorization.
+- README, repo description, install script, and skill entry no longer designate one platform as the sole default.
+- When adding a fourth platform later, new work primarily focuses on the adapter layer, not rewriting the entire wiki logic.
 
 ## Scope Boundaries
 
-- 本阶段不把项目改造成网页产品或独立应用。
-- 本阶段不以“完全零前置、零授权、零环境差异”为目标；当平台本身做不到时，只允许最小化的用户确认动作。
-- 本阶段不追求同时兼容所有 agent 平台，目标平台限定为 Claude Code、Codex、OpenClaw。
-- 本阶段不继续依赖“一个大文件里写满所有平台条件分支”的做法作为长期方案。
-- 本阶段不重做整套素材提取能力；网页、X、YouTube 等来源的深度重构留到多平台适配完成后单独处理。
+- This phase does not transform the project into a web product or standalone application.
+- This phase does not target “zero prerequisites, zero authorization, zero environment differences”; when the platform itself can't achieve this, only minimal user confirmation actions are allowed.
+- This phase does not aim to be compatible with all agent platforms simultaneously; target platforms are limited to Claude Code, Codex, and OpenClaw.
+- This phase no longer relies on “one big file with all platform conditional branches” as a long-term approach.
+- This phase does not redo the entire material extraction capability; deep restructuring of web, X, YouTube etc. sources is deferred until after multi-platform adaptation is complete.
 
 ## Key Decisions
 
-- 单仓库、单官方链接：用户入口保持唯一，降低分发和理解成本。
-- 共用核心 + 平台薄适配层：避免演变成三套长期漂移的产品。
-- 保功能完整，不打折：多平台支持的价值来自“用户换平台不掉能力”。
-- 优先优化 agent 自动安装：这比手动 README 安装更符合实际使用习惯。
-- 关键依赖逐步内收：与其赌外部 skill 在所有平台都稳定，不如把关键能力逐步纳入本项目控制范围。
+- Single repo, single official link: keep user entry unique, reducing distribution and comprehension cost.
+- Shared core + thin platform adapter layer: avoid evolving into three long-term-drifting products.
+- Preserve full functionality, no compromises: multi-platform support's value comes from “users don't lose capabilities when switching platforms.”
+- Prioritize agent auto-install optimization: this better matches actual usage habits than manual README installation.
+- Gradually internalize key dependencies: rather than betting external skills are stable on all platforms, gradually bring critical capabilities under project control.
 
 ## Dependencies / Assumptions
 
-- 目标平台都具备读取仓库说明、执行安装命令、操作本地文件和运行必要脚本的基础能力。
-- 某些素材提取流程仍可能依赖浏览器、登录态或系统工具，这些能力不一定能完全跨平台抽象掉。
-- 第一版允许先保留少量外部依赖，但总体方向是把关键路径收回项目自身控制。
+- Target platforms all have basic capabilities of reading repo docs, executing install commands, manipulating local files, and running necessary scripts.
+- Some material extraction flows may still depend on browser, login state, or system tools; these capabilities may not fully abstract across platforms.
+- The first version allows retaining some external dependencies, but the overall direction is to bring critical paths under project control.
 
 ## Outstanding Questions
 
@@ -71,12 +71,12 @@ topic: multi-agent-platform-support
 
 ### Deferred to Planning
 
-- [Affects R7][Technical] 三个平台各自最合适的入口文件和放置方式是什么，才能让 agent 自动识别率最高？
-- [Affects R10][Needs research] 哪些安装动作应由统一安装器负责，哪些应由各平台适配层声明？
-- [Affects R12][Needs research] 现有外部依赖中，哪些必须第一阶段就内收，哪些可以延后？
-- [Affects R4][Technical] 三个平台上的完整功能验证应采用什么最小可行验证清单，才能证明不是“表面兼容”？
-- [Affects R12][Future phase] 素材提取能力的内收顺序、替换策略和长期维护方式，在多平台适配完成后另开一轮方案。
+- [Affects R7][Technical] What are the most suitable entry files and placement for each of the three platforms to maximize agent auto-recognition rate?
+- [Affects R10][Needs research] Which installation actions should be handled by the unified installer vs declared by platform adapter layers?
+- [Affects R12][Needs research] Among existing external dependencies, which must be internalized in the first phase, which can be deferred?
+- [Affects R4][Technical] What minimum viable verification checklist should be used for full functionality validation across three platforms, to prove it's not “surface compatibility”?
+- [Affects R12][Future phase] Material extraction capability internalization order, replacement strategy, and long-term maintenance approach, to be planned in a separate round after multi-platform adaptation is complete.
 
 ## Next Steps
 
-→ `/prompts:ce-plan` for structured implementation planning
+-> `/prompts:ce-plan` for structured implementation planning

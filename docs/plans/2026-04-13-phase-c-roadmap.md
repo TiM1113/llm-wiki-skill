@@ -1,109 +1,109 @@
-# Phase C 路线图
+# Phase C Roadmap
 
-状态：DONE（C1–C4 全部实现，v2.2.0）
-记录日期：2026-04-13
-前置：Phase A（ingest 验证 + 置信度规则）和 Phase B（crystallize 工作流）完成后再做
-
----
-
-## 背景
-
-Phase A + B 解决了 ingest 验证和知识沉淀两个核心问题。
-Phase C 是下一批改进，来源于 llm-wiki-skill vs LLM Wiki v2 对比分析（/plan 会话，2026-04-13）。
-
-4 个功能互相独立，可以任意顺序实现。
+Status: DONE (C1-C4 all implemented, v2.2.0)
+Recorded: 2026-04-13
+Prerequisites: Execute after Phase A (ingest validation + confidence rules) and Phase B (crystallize workflow) are complete
 
 ---
 
-## C1. lint 脚本化
+## Background
 
-**问题：** lint 工作流全靠 AI 自觉执行，没有脚本骨架，没有测试覆盖。
+Phase A + B solved two core problems: ingest validation and knowledge crystallization.
+Phase C is the next batch of improvements, sourced from llm-wiki-skill vs LLM Wiki v2 comparative analysis (/plan session, 2026-04-13).
 
-**改动文件：**
-- 新建 `scripts/lint-runner.sh`（约 50 行）
-- 修改 `SKILL.md` 的 lint 工作流章节
-
-**脚本职责：**
-- 扫描孤立页：`wiki/` 下存在但 `index.md` 没有引用的页面
-- 扫描断链：`[[X]]` 格式但 `wiki/entities/X.md` 不存在
-- 扫描矛盾记录：从 source 页面提取 `contradictions` 标签
-
-**SKILL.md 改动：** lint 工作流调用脚本生成结构化报告，AI 只负责撰写修复建议
-
-**工作量：** M
+4 features are mutually independent, can be implemented in any order.
 
 ---
 
-## C2. 多输出格式
+## C1. Lint Scriptification
 
-**问题：** digest 工作流只输出 Markdown 摘要，没有对比表、时间线等格式选项。
+**Problem:** lint workflow relies entirely on AI self-execution, no script skeleton, no test coverage.
 
-**改动文件：**
-- 修改 `SKILL.md` 的 digest 工作流章节（只改 SKILL.md，不写脚本）
+**Changed files:**
+- Create `scripts/lint-runner.sh` (~50 lines)
+- Modify `SKILL.md` lint workflow section
 
-**新增格式：**
-- `对比表`：Markdown 多列表格，比较多个素材在同一维度的观点
-- `时间线`：Mermaid gantt 格式，适合按时间排列的事件/进展类素材
+**Script responsibilities:**
+- Scan orphan pages: pages existing under `wiki/` but not referenced in `index.md`
+- Scan broken links: `[[X]]` format but `wiki/entities/X.md` doesn't exist
+- Scan contradiction records: extract `contradictions` tags from source pages
 
-**触发方式（SKILL.md 路由）：**
-- "对比一下 A 和 B" → 对比表格式
-- "整理一下时间线" → Mermaid gantt 格式
+**SKILL.md changes:** lint workflow calls script to generate structured report; AI only responsible for writing fix recommendations
 
-**工作量：** S（只改 SKILL.md）
+**Effort:** M
 
 ---
 
-## C3. Schema 类型化关系
+## C2. Multiple Output Formats
 
-**问题：** graph 工作流只输出简单 `[[A]] --> [[B]]`，没有语义关系类型。
+**Problem:** digest workflow only outputs Markdown summary, no comparison table, timeline, or other format options.
 
-**改动文件：**
-- 修改 `templates/schema-template.md`（加 entity_types、relationship_types 字段）
-- 修改 `SKILL.md` 的 graph 工作流章节
+**Changed files:**
+- Modify `SKILL.md` digest workflow section (only change SKILL.md, no scripts)
 
-**效果：**
+**New formats:**
+- `Comparison table`: Markdown multi-column table, comparing viewpoints across multiple sources on the same dimension
+- `Timeline`: Mermaid gantt format, suitable for chronologically arranged events/progress materials
+
+**Trigger method (SKILL.md routing):**
+- "Compare A and B" -> comparison table format
+- "Organize the timeline" -> Mermaid gantt format
+
+**Effort:** S (only SKILL.md changes)
+
+---
+
+## C3. Schema Typed Relationships
+
+**Problem:** graph workflow only outputs simple `[[A]] --> [[B]]`, no semantic relationship types.
+
+**Changed files:**
+- Modify `templates/schema-template.md` (add entity_types, relationship_types fields)
+- Modify `SKILL.md` graph workflow section
+
+**Result:**
 ```mermaid
-A --实现--> B
-C --依赖--> D
-E --对比--> F
+A --implements--> B
+C --depends-on--> D
+E --compares-with--> F
 ```
 
-**schema-template.md 新增字段示例：**
+**schema-template.md new field examples:**
 ```markdown
-## 关系类型
-- 实现 (implements)
-- 依赖 (depends-on)
-- 对比 (compares-with)
-- 衍生 (derived-from)
-- 矛盾 (contradicts)
+## Relationship Types
+- implements
+- depends-on
+- compares-with
+- derived-from
+- contradicts
 ```
 
-**工作量：** M
+**Effort:** M
 
 ---
 
-## C4. 隐私过滤
+## C4. Privacy Filtering
 
-**问题：** ingest 前没有任何敏感数据过滤，手机号、身份证、密码等可能意外进入知识库。
+**Problem:** No sensitive data filtering before ingest; phone numbers, ID numbers, passwords etc. could accidentally enter the wiki.
 
-**改动文件：**
-- 新建 `scripts/privacy-filter.sh`（约 40 行）
-- 修改 `SKILL.md` 的 ingest 工作流（在缓存检查前调用）
+**Changed files:**
+- Create `scripts/privacy-filter.sh` (~40 lines)
+- Modify `SKILL.md` ingest workflow (call before cache check)
 
-**脚本职责：**
-- 检测常见敏感词模式：手机号正则、身份证正则、API key 格式（`sk-...`、`Bearer ...`）
-- 发现时提醒用户确认是否继续
-- 扫描结果追加到 log.md：`<!-- privacy-scan: clean -->` 或 `<!-- privacy-scan: WARNING -->`
+**Script responsibilities:**
+- Detect common sensitive patterns: phone number regex, ID number regex, API key format (`sk-...`, `Bearer ...`)
+- Prompt user to confirm whether to continue when detected
+- Append scan results to log.md: `<!-- privacy-scan: clean -->` or `<!-- privacy-scan: WARNING -->`
 
-**工作量：** M
+**Effort:** M
 
 ---
 
-## 优先级建议
+## Priority Recommendations
 
-如果四个都要做，建议顺序：C1 → C3 → C2 → C4
+If implementing all four, recommended order: C1 -> C3 -> C2 -> C4
 
-- C1 先做：lint 脚本化收益最高，也是最直接的质量保障
-- C3 其次：schema 类型化影响 graph 工作流，做完 C1 后顺手
-- C2 容易：只改 SKILL.md，随时可以插队
-- C4 最后：隐私过滤是安全增强，不影响核心功能
+- C1 first: lint scriptification has highest ROI and is the most direct quality assurance
+- C3 next: schema typed relationships affect graph workflow, natural follow-up after C1
+- C2 easy: only SKILL.md changes, can be slotted in anytime
+- C4 last: privacy filtering is a security enhancement, doesn't affect core functionality

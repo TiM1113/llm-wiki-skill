@@ -1,6 +1,6 @@
 #!/bin/bash
-# 外挂状态检测的回归测试
-# 覆盖：not_installed / env_unavailable / runtime_failed / empty_result / unsupported
+# Regression tests for adapter state detection
+# Coverage: not_installed / env_unavailable / runtime_failed / empty_result / unsupported
 
 set -euo pipefail
 
@@ -101,7 +101,7 @@ exit 1'
     )" || fail "adapter-state should understand bundled deps from a source checkout"
 
     assert_text_contains "$output" "available"
-    assert_text_contains "$output" "临时浏览器"
+    assert_text_contains "$output" "temporary browser will be launched"
 }
 
 test_adapter_state_distinguishes_not_installed_and_unsupported() {
@@ -113,14 +113,14 @@ test_adapter_state_distinguishes_not_installed_and_unsupported() {
     make_stub "$tmp_dir/bin/uv" '#!/bin/sh
 exit 0'
 
+    # web_article uses bundled baoyu-url-to-markdown; without it in skill root, should be not_installed
     output="$(
         PATH="$tmp_dir/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
-        bash "$REPO_ROOT/scripts/adapter-state.sh" --skill-root "$tmp_dir/skills" check wechat_article 2>&1
+        bash "$REPO_ROOT/scripts/adapter-state.sh" --skill-root "$tmp_dir/skills" check web_article 2>&1
     )" || fail "adapter-state should classify not_installed"
 
     assert_text_contains "$output" "not_installed"
-    assert_text_contains "$output" "wechat-article-to-markdown"
-    assert_text_contains "$output" "手动入口"
+    assert_text_contains "$output" "baoyu-url-to-markdown"
 
     output="$(
         PATH="$tmp_dir/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
@@ -128,7 +128,7 @@ exit 0'
     )" || fail "adapter-state should classify unsupported"
 
     assert_text_contains "$output" "unsupported"
-    assert_text_contains "$output" "请先从 App 或网页复制内容"
+    assert_text_contains "$output" "Copy content from the app or website first"
 }
 
 test_web_capture_available_without_chrome_debug_port() {
@@ -148,7 +148,7 @@ exit 1'
     )" || fail "adapter-state should keep Chrome-backed sources available without 9222"
 
     assert_text_contains "$output" "available"
-    assert_text_contains "$output" "临时浏览器"
+    assert_text_contains "$output" "temporary browser will be launched"
     assert_text_contains "$output" "9222"
 }
 
@@ -169,8 +169,8 @@ exit 0'
     )" || fail "adapter-state should report available with Chrome debug session"
 
     assert_text_contains "$output" "available"
-    assert_text_contains "$output" "可复用的 Chrome 调试会话"
-    # install_hint 应为"-"，不应出现"补充说明"
+    assert_text_contains "$output" "reusable Chrome debug session"
+    # install_hint should be "-", should not show "supplementary note"
     assert_text_not_contains "$output" "9222"
 }
 
@@ -216,7 +216,7 @@ exit 0'
     )" || fail "adapter-state should classify runtime_failed"
 
     assert_text_contains "$output" "runtime_failed"
-    assert_text_contains "$output" "重试"
+    assert_text_contains "$output" "Try again"
 
     output="$(
         PATH="$tmp_dir/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
@@ -224,7 +224,7 @@ exit 0'
     )" || fail "adapter-state should classify empty_result"
 
     assert_text_contains "$output" "empty_result"
-    assert_text_contains "$output" "手动补全文本"
+    assert_text_contains "$output" "manually provide the text"
 
     output="$(
         PATH="$tmp_dir/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
@@ -245,9 +245,10 @@ test_classify_run_preserves_preflight_failures() {
     make_stub "$tmp_dir/bin/uv" '#!/bin/sh
 exit 0'
 
+    # web_article is bundled; without baoyu-url-to-markdown in skill root it's not_installed
     output="$(
         PATH="$tmp_dir/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
-        bash "$REPO_ROOT/scripts/adapter-state.sh" --skill-root "$tmp_dir/skills" classify-run wechat_article 1 "$tmp_dir/full.txt" 2>&1
+        bash "$REPO_ROOT/scripts/adapter-state.sh" --skill-root "$tmp_dir/skills" classify-run web_article 1 "$tmp_dir/full.txt" 2>&1
     )" || fail "classify-run should preserve not_installed preflight state"
 
     assert_text_contains "$output" "not_installed"
@@ -276,10 +277,8 @@ exit 0'
     make_stub "$tmp_dir/bin/lsof" '#!/bin/sh
 exit 1'
 
-    make_stub "$tmp_dir/bin/uv" "#!/bin/sh
-printf '%s\n' '#!/bin/sh' 'exit 0' > \"$tmp_dir/bin/wechat-article-to-markdown\"
-chmod +x \"$tmp_dir/bin/wechat-article-to-markdown\"
-exit 0"
+    make_stub "$tmp_dir/bin/uv" '#!/bin/sh
+exit 0'
 
     output="$(
         HOME="$tmp_dir/home" \
@@ -287,18 +286,16 @@ exit 0"
         bash "$REPO_ROOT/install.sh" --platform claude --with-optional-adapters 2>&1
     )" || fail "install.sh should surface adapter states"
 
-    assert_text_contains "$output" "外挂状态"
-    assert_text_contains "$output" "网页文章"
-    assert_text_contains "$output" "可用"
-    assert_text_contains "$output" "临时浏览器"
-    assert_text_contains "$output" "微信公众号"
-    assert_text_contains "$output" "可用"
+    assert_text_contains "$output" "Adapter Status"
+    assert_text_contains "$output" "Web article"
+    assert_text_contains "$output" "Available"
+    assert_text_contains "$output" "temporary browser will be launched"
 }
 
 test_skill_routes_ingest_and_status_through_adapter_state_model() {
     assert_file_contains "$REPO_ROOT/SKILL.md" "scripts/adapter-state.sh"
     assert_file_contains "$REPO_ROOT/SKILL.md" "not_installed / env_unavailable / runtime_failed / unsupported / empty_result"
-    assert_file_contains "$REPO_ROOT/SKILL.md" "外挂状态"
+    assert_file_contains "$REPO_ROOT/SKILL.md" "Adapter status"
     assert_file_contains "$REPO_ROOT/SKILL.md" "--with-optional-adapters"
 }
 
@@ -310,7 +307,7 @@ test_summary_human_shows_supplementary_label_for_available_with_hint() {
     mkdir -p "$tmp_dir/bin" "$tmp_dir/skills"
     prepare_skill_root "$tmp_dir/skills"
 
-    # lsof 返回 1 → Chrome 9222 未监听 → state=available + install_hint 非空
+    # lsof returns 1 → Chrome 9222 not listening → state=available + install_hint non-empty
     make_stub "$tmp_dir/bin/lsof" '#!/bin/sh
 exit 1'
 
@@ -319,8 +316,8 @@ exit 1'
         bash "$REPO_ROOT/scripts/adapter-state.sh" --skill-root "$tmp_dir/skills" summary-human 2>&1
     )" || fail "summary-human should succeed"
 
-    # available + 有 install_hint → 应显示"补充说明"
-    assert_text_contains "$output" "补充说明"
+    # available + install_hint present → should show "Note:" label
+    assert_text_contains "$output" "Note:"
 }
 
 test_adapter_state_distinguishes_not_installed_and_unsupported

@@ -1,5 +1,5 @@
 ---
-title: "升级脚本版本检测失败：git tag 与 CHANGELOG.md 不同步"
+title: "Upgrade script version detection failure: git tag out of sync with CHANGELOG.md"
 date: 2026-04-13
 category: docs/solutions/workflow-issues
 module: llm-wiki-skill
@@ -9,123 +9,123 @@ severity: medium
 root_cause: missing_workflow_step
 resolution_type: workflow_improvement
 applies_when:
-  - 发布新版本并推送 git tag 后
-  - 运行 /llm-wiki-upgrade 验证版本检测时
-  - 任何使用 CHANGELOG.md 作为版本源的升级流程
+  - After releasing a new version and pushing git tag
+  - When running /llm-wiki-upgrade to verify version detection
+  - Any upgrade flow that uses CHANGELOG.md as the version source
 tags: [changelog, version, git-tag, release-workflow, upgrade]
 ---
 
-# 升级脚本版本检测失败：git tag 与 CHANGELOG.md 不同步
+# Upgrade script version detection failure: git tag out of sync with CHANGELOG.md
 
 ## Context
 
-合并 Phase A+B 功能 PR 后，创建了 git tag `v2.1.0` 并推送到远程。运行 `/llm-wiki-upgrade` 时，脚本报告版本仍为 `v2.0.0`，提示"已是最新版本"。
+After merging the Phase A+B feature PR, git tag `v2.1.0` was created and pushed to remote. When running `/llm-wiki-upgrade`, the script reported version still as `v2.0.0`, saying "already on latest version."
 
-升级脚本从 CHANGELOG.md 读取版本号：
+The upgrade script reads version number from CHANGELOG.md:
 
 ```bash
-# llm-wiki-upgrade SKILL.md 第 22 行
+# llm-wiki-upgrade SKILL.md line 22
 OLD_VERSION=$(grep -m1 "^## v" "$SKILL_DIR/CHANGELOG.md" 2>/dev/null \
   | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
 ```
 
-CHANGELOG.md 第一个 `## v` 标题仍然是 `## v2.0.0 (2026-04-11)`。git tag 存在但 changelog 未更新，脚本比较 `v2.0.0 == v2.0.0`，判定无需升级。
+CHANGELOG.md's first `## v` heading was still `## v2.0.0 (2026-04-11)`. Git tag exists but changelog was not updated; script compares `v2.0.0 == v2.0.0` and determines no upgrade needed.
 
 ## Guidance
 
-### 规则：每个 git tag 必须伴随 CHANGELOG.md 更新，且 tag 必须打在包含 changelog 的 commit 上
+### Rule: Every git tag must be accompanied by a CHANGELOG.md update, and the tag must be placed on the commit that contains the changelog
 
-正确发布顺序：
+Correct release sequence:
 
 ```bash
-# 1. 先更新 CHANGELOG.md（在文件顶部添加新版本条目）
-# 2. 提交 changelog
+# 1. Update CHANGELOG.md first (add new version entry at top)
+# 2. Commit changelog
 git add CHANGELOG.md
 git commit -m "docs: update CHANGELOG for vX.Y.Z"
 
-# 3. 在包含 changelog 的 commit 上打 tag
+# 3. Tag the commit that contains the changelog
 git tag vX.Y.Z
 
-# 4. 推送
+# 4. Push
 git push && git push origin vX.Y.Z
 ```
 
-### 本次修复操作
+### Fix operations for this instance
 
 ```bash
-# 1. 更新 CHANGELOG.md 添加 v2.1.0 条目
-# 2. 提交
+# 1. Update CHANGELOG.md with v2.1.0 entry
+# 2. Commit
 git add CHANGELOG.md
 git commit -m "docs: update CHANGELOG for v2.1.0"
 
-# 3. 删除旧 tag 并重新打
+# 3. Delete old tag and re-create
 git tag -d v2.1.0
 git tag v2.1.0
 
-# 4. 推送 commit 和 force-push tag
+# 4. Push commit and force-push tag
 git push origin main
 git push origin v2.1.0 --force
 ```
 
 ## Why This Matters
 
-1. **升级检测依赖 CHANGELOG.md**：`/llm-wiki-upgrade` 用 CHANGELOG.md 的第一个 `## v` 标题判断版本。changelog 未更新，即使 tag 存在，升级不会触发。
+1. **Upgrade detection depends on CHANGELOG.md**: `/llm-wiki-upgrade` uses the first `## v` heading in CHANGELOG.md to determine version. If changelog is not updated, even if tag exists, upgrade won't trigger.
 
-2. **tag 和 changelog 必须指向同一个 commit**：tag 指向的 commit 必须包含对应的 changelog 条目。否则用户 clone 后看到的 changelog 版本与 tag 不匹配。
+2. **Tag and changelog must point to the same commit**: The commit pointed to by the tag must contain the corresponding changelog entry. Otherwise the changelog version users see after cloning won't match the tag.
 
-3. **跳过此步骤的后果**：本次 bug 中，用户完成开发、合并 PR、打 tag 后，运行升级得到"已是最新"。其他环境中的用户同样无法感知新版本。
+3. **Consequence of skipping this step**: In this bug, after completing development, merging PR, and creating tag, running upgrade returned "already on latest." Users in other environments also couldn't detect the new version.
 
 ## When to Apply
 
-- 每次创建语义化版本 tag（`vX.Y.Z`）时
-- 合并 feature PR 或 release PR 后准备发布时
-- 执行 `/llm-wiki-upgrade` 前检查版本一致性时
+- Every time a semantic version tag (`vX.Y.Z`) is created
+- When preparing to release after merging a feature PR or release PR
+- Before running `/llm-wiki-upgrade` to check version consistency
 
 ## Examples
 
-### 错误做法（本次 bug）
+### Wrong approach (this bug)
 
 ```bash
-# 合并 PR
+# Merge PR
 gh pr merge 6 --merge
 
-# 直接打 tag，跳过 CHANGELOG
+# Create tag directly, skipping CHANGELOG
 git tag v2.1.0
 git push origin v2.1.0
 
-# 结果：upgrade skill 读到 v2.0.0，判定"已是最新"
+# Result: upgrade skill reads v2.0.0, determines "already on latest"
 ```
 
-### 正确做法
+### Correct approach
 
 ```bash
-# 合并 PR
+# Merge PR
 gh pr merge 6 --merge
 
-# 先更新 CHANGELOG.md
-# ...添加 ## v2.1.0 (2026-04-13) 条目...
+# First update CHANGELOG.md
+# ...add ## v2.1.0 (2026-04-13) entry...
 
-# 提交 changelog
+# Commit changelog
 git add CHANGELOG.md
 git commit -m "docs: update CHANGELOG for v2.1.0"
 
-# 在包含 changelog 的 commit 上打 tag
+# Tag the commit that contains changelog
 git tag v2.1.0
 
-# 推送
+# Push
 git push && git push origin v2.1.0
 ```
 
-### 发布检查清单
+### Release checklist
 
-发布新版本前确认：
+Confirm before releasing a new version:
 
-- [ ] CHANGELOG.md 顶部有新版本条目
-- [ ] CHANGELOG.md 条目的版本号与即将创建的 tag 一致
-- [ ] tag 打在包含 changelog 更新的 commit 上
-- [ ] 本地运行 `/llm-wiki-upgrade` 验证版本检测正确
+- [ ] CHANGELOG.md has new version entry at top
+- [ ] CHANGELOG.md entry version matches the tag about to be created
+- [ ] Tag is on the commit that contains the changelog update
+- [ ] Locally run `/llm-wiki-upgrade` to verify correct version detection
 
 ## Related
 
-- `~/.claude/skills/llm-wiki-upgrade/SKILL.md` — 升级脚本，版本检测逻辑所在
-- `docs/plans/2026-04-11-wiki-core-upgrades-design.md` — Phase 5 提到 CHANGELOG 更新但未定义发布门禁
+- `~/.claude/skills/llm-wiki-upgrade/SKILL.md` — Upgrade script, where version detection logic lives
+- `docs/plans/2026-04-11-wiki-core-upgrades-design.md` — Phase 5 mentions CHANGELOG update but did not define release gate

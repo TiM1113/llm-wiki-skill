@@ -1,15 +1,17 @@
 ---
 name: llm-wiki
-version: 3.0.4
+version: 3.3.0
 author: sdyckjq-lab
 license: MIT
 description: |
-  个人知识库构建系统（基于 Karpathy llm-wiki 方法论）。让 AI 持续构建和维护你的知识库，
-  支持多种素材源（网页、推特、公众号、小红书、知乎、YouTube、PDF、本地文件），
-  自动整理为结构化的 wiki。
-  触发条件：用户明确提到"知识库"、"wiki"、"llm-wiki"，或要求对已初始化的知识库执行
-  消化、查询、健康检查等操作。不要在用户只是要求"总结这篇文章"时触发——必须是明确的
-  知识库相关意图。
+  Personal knowledge base construction system (based on Karpathy's llm-wiki methodology).
+  Let AI continuously build and maintain your knowledge base, supporting multiple source types
+  (web pages, tweets, Xiaohongshu, YouTube, PDF, local files),
+  automatically organized into a structured wiki.
+  Trigger conditions: the user explicitly mentions "knowledge base", "wiki", or "llm-wiki",
+  or requests operations on an already-initialized knowledge base such as ingest, query,
+  health check, etc. Do NOT trigger when the user simply asks to "summarize this article"
+  — there must be clear knowledge-base-related intent.
 metadata:
   hermes:
     tags:
@@ -19,28 +21,28 @@ metadata:
       - note-taking
 ---
 
-# llm-wiki — 个人知识库构建系统
+# llm-wiki — Personal Knowledge Base Construction System
 
-> 把碎片化的信息变成持续积累、互相链接的知识库。你只需要提供素材，AI 做所有的整理工作。
+> Turn fragmented information into a continuously growing, interlinked knowledge base. You just provide the sources — AI handles all the organizing.
 
-## 这个 skill 做什么
+## What This Skill Does
 
-llm-wiki 帮你构建一个**持续增长的个人知识库**。它不是传统的笔记软件，而是一个让 AI 帮你维护的 wiki 系统：
+llm-wiki helps you build a **continuously growing personal knowledge base**. It is not traditional note-taking software, but an AI-maintained wiki system:
 
-- 你给素材（链接、文件、文本），AI 提取核心知识并整理成互相链接的 wiki 页面
-- 知识库随着每次使用变得越来越丰富，而不是每次重新开始
-- 所有内容都是本地 markdown 文件，用 Obsidian 或任何编辑器都能查看
+- You provide sources (links, files, text), and AI extracts core knowledge and organizes it into interlinked wiki pages
+- The knowledge base grows richer with each use, rather than starting from scratch every time
+- All content is stored as local markdown files, viewable with Obsidian or any editor
 
-## 核心理念
+## Core Philosophy
 
-传统方式（RAG/聊天记录）的问题：每次问问题，AI 都要从头阅读原始文件，没有积累。知识库的价值在于**知识被编译一次，然后持续维护**，而不是每次重新推导。
+The problem with traditional approaches (RAG/chat history): every time you ask a question, the AI has to re-read raw files from scratch with no accumulation. The value of a knowledge base lies in **knowledge being compiled once and then continuously maintained**, rather than re-derived each time.
 
-## 快速开始
+## Quick Start
 
-告诉用户这两步就够了：
+Tell the user these two steps are all they need:
 
-1. **初始化**：说"帮我初始化一个知识库"
-2. **添加素材**：给一个链接或文件，说"帮我消化这篇"
+1. **Initialize**: Say "help me initialize a knowledge base"
+2. **Add sources**: Give a link or file and say "help me ingest this"
 
 ---
 
@@ -54,1053 +56,1051 @@ Scripts located in `scripts/` subdirectory.
 
 ---
 
-## 依赖检查
+## Dependency Check
 
-核心主线（本地文件、纯文本、已有知识库操作）默认不需要这些提取依赖。
+The core pipeline (local files, plain text, existing knowledge base operations) does not require these extraction dependencies by default.
 
-只有当用户给的是 URL 类来源，并且明确要自动提取网页 / X / 微信公众号 / YouTube / 知乎内容时，才检查以下可选依赖。
+Only check the following optional dependencies when the user provides a URL-type source and explicitly wants automatic extraction of web pages / X / YouTube content.
 
-如果缺失，提示用户运行：
+If missing, prompt the user to run:
 
 ```bash
-bash ${SKILL_DIR}/install.sh --platform <当前平台> --with-optional-adapters
+bash ${SKILL_DIR}/install.sh --platform <current-platform> --with-optional-adapters
 ```
 
-可选依赖 skill / 工具：
-- `baoyu-url-to-markdown` — 普通网页、X/Twitter、部分知乎提取
-- `wechat-article-to-markdown` — 微信公众号提取
-- `youtube-transcript` — YouTube 字幕提取
+Optional dependency skills / tools:
+- `baoyu-url-to-markdown` — general web pages, X/Twitter
+- `youtube-transcript` — YouTube transcript extraction
 
-即使这些依赖缺失，skill 仍可工作（用户可以直接提供本地文件、粘贴文本，或改走手动入口）。
+Even if these dependencies are missing, the skill still works (users can directly provide local files, paste text, or fall back to manual entry).
 
-## 外挂状态模型
+## Adapter State Model
 
-外挂失败统一分成 `not_installed / env_unavailable / runtime_failed / unsupported / empty_result` 五类。
+Adapter failures are uniformly classified into five categories: `not_installed / env_unavailable / runtime_failed / unsupported / empty_result`.
 
-所有需要枚举来源、读取 `source_label`、`raw_dir`、`adapter_name`、`fallback_hint` 的地方，都先读来源总表：
+Whenever you need to enumerate sources or read `source_label`, `raw_dir`, `adapter_name`, `fallback_hint`, first read the source registry:
 
 ```bash
 bash ${SKILL_DIR}/scripts/source-registry.sh list
 ```
 
-需要拿单个来源的定义时，用：
+To get a single source definition, use:
 
 ```bash
 bash ${SKILL_DIR}/scripts/source-registry.sh get <source_id>
 ```
 
-对 URL 类来源，先运行：
+For URL-type sources, first run:
 
 ```bash
 bash ${SKILL_DIR}/scripts/adapter-state.sh check <source_id>
 ```
 
-`adapter-state.sh check` 返回 8 列：
+`adapter-state.sh check` returns 8 columns:
 
 ```text
 source_id	source_label	state	state_label	detail	recovery_action	install_hint	fallback_hint
 ```
 
-- `not_installed`：提示用户可补安装，同时允许改走手动入口
-- `env_unavailable`：说明缺少的环境条件，同时允许改走手动入口
-- `runtime_failed`：说明本次提取执行失败，允许重试一次，再改走手动入口
-- `unsupported`：直接给出手动入口，不尝试自动提取
-- `empty_result`：说明自动提取没拿到有效内容，请用户手动补全文本
+- `not_installed`: Prompt the user that they can install it, while also allowing manual entry
+- `env_unavailable`: Explain the missing environment prerequisites, while also allowing manual entry
+- `runtime_failed`: Explain that this extraction attempt failed; allow one retry, then fall back to manual entry
+- `unsupported`: Provide the manual entry path directly; do not attempt automatic extraction
+- `empty_result`: Explain that automatic extraction did not retrieve valid content; ask the user to manually provide the text
 
-当自动提取实际执行后，再运行：
+After automatic extraction has actually run, execute:
 
 ```bash
 bash ${SKILL_DIR}/scripts/adapter-state.sh classify-run <source_id> <exit_code> <output_path>
 ```
 
-用返回的 `detail`、`recovery_action`、`install_hint`、`fallback_hint` 生成提示。核心主线不因外挂失败而中断。
+Use the returned `detail`, `recovery_action`, `install_hint`, `fallback_hint` to generate prompts. The core pipeline must not be interrupted by adapter failures.
 
 ---
 
-## 工作流路由
+## Workflow Routing
 
-根据用户的意图，路由到对应的工作流：
+Route to the corresponding workflow based on user intent:
 
-| 用户意图关键词 | 工作流 |
+| User Intent Keywords | Workflow |
 |---|---|
-| "初始化知识库"、"新建 wiki"、"创建知识库" | → **init** |
-| URL / 文件路径 / "添加素材"、"消化"、"整理" / 直接给链接 | → **ingest** |
-| "批量消化"、"把这些都整理" / 给了文件夹路径 | → **batch-ingest** |
-| "关于 XX"、"查询"、"XX 是什么"、"总结一下" | → **query** |
-| "给我讲讲 XX"、"深度分析 XX"、"综述 XX"、"digest XX" | → **digest** |
-| "对比一下 X 和 Y"、"比较 X 和 Y"、"整理一下时间线"、"按时间排列" | → **digest**（指定格式） |
-| "检查知识库"、"健康检查"、"lint" | → **lint** |
-| "知识库状态"、"现在有什么"、"有多少素材" | → **status** |
-| "画个知识图谱"、"看看关联图"、"graph"、"知识库地图" | → **graph** |
-| "删除素材"、"remove"、"delete source"、"移除" | → **delete** |
-| "结晶化"、"crystallize"、"把这个记进知识库"、"总结这段对话" | → **crystallize** |
+| "initialize knowledge base", "new wiki", "create knowledge base" | → **init** |
+| URL / file path / "add source", "ingest", "organize" / direct link | → **ingest** |
+| "batch ingest", "organize all of these" / folder path provided | → **batch-ingest** |
+| "about XX", "query", "what is XX", "summarize" | → **query** |
+| "tell me about XX", "deep analysis of XX", "overview of XX", "digest XX" | → **digest** |
+| "compare X and Y", "differences between X and Y", "organize a timeline", "chronological order" | → **digest** (specific format) |
+| "check knowledge base", "health check", "lint" | → **lint** |
+| "knowledge base status", "what do we have", "how many sources" | → **status** |
+| "draw a knowledge graph", "show connections", "graph", "knowledge base map" | → **graph** |
+| "delete source", "remove", "delete source", "remove" | → **delete** |
+| "crystallize", "crystallize", "save this to the knowledge base", "this conversation is valuable" | → **crystallize** |
 
-**重要**：如果用户直接给了一个 URL 或文件，但没有明确说要做什么，默认走 **ingest** 工作流。如果知识库还不存在，先自动走 **init** 再走 **ingest**。
+**Important**: If the user directly provides a URL or file without explicitly stating what to do, default to the **ingest** workflow. If the knowledge base does not yet exist, automatically run **init** first, then **ingest**.
 
 ---
 
-## 通用前置检查
+## Common Pre-checks
 
-除 `init` 外，其他工作流默认先执行这段检查：
+All workflows except `init` run this check by default:
 
-1. 先检查**当前工作目录**是否包含 `.wiki-schema.md`
-   - 如果包含 → 用当前目录作为知识库根路径
-   - 如果不包含 → 回退到读取 `~/.llm-wiki-path`
-2. 如果两者都没有：
-   - `ingest` / `batch-ingest` → 先运行 `init`
-   - `query` / `lint` / `status` / `digest` / `graph` / `delete` → 提示用户先初始化知识库
-3. 读取知识库根目录下的 `.wiki-schema.md`
-4. 从 `.wiki-schema.md` 的"语言"字段判断 `WIKI_LANG`
+1. First check whether the **current working directory** contains `.wiki-schema.md`
+   - If it does → use the current directory as the knowledge base root path
+   - If it does not → fall back to reading `~/.llm-wiki-path`
+2. If neither exists:
+   - `ingest` / `batch-ingest` → run `init` first
+   - `query` / `lint` / `status` / `digest` / `graph` / `delete` → prompt the user to initialize a knowledge base first
+3. Read `.wiki-schema.md` from the knowledge base root directory
+4. Determine `WIKI_LANG` from the language field in `.wiki-schema.md`
    - `语言：中文` → `WIKI_LANG=zh`
    - `语言：English` → `WIKI_LANG=en`
-   - 字段缺失 → 默认 `WIKI_LANG=zh`
+   - Field missing → default `WIKI_LANG=zh`
 
-## 输出语言规则
+## Output Language Rules
 
-所有面向用户的输出和新写入的 wiki 内容，都按 `WIKI_LANG` 生成：
+All user-facing output and newly written wiki content is generated according to `WIKI_LANG`:
 
-- `WIKI_LANG=zh` → 使用下文中文示例
-- `WIKI_LANG=en` → 保持与中文示例相同的结构、信息量和顺序，仅改为自然英文措辞
-- 文件路径、wiki 链接、目录名保持现有约定，不因为语言切换而改动
+- `WIKI_LANG=zh` → use Chinese
+- `WIKI_LANG=en` → use natural English with the same structure, information density, and order
+- File paths, wiki links, and directory names retain existing conventions and do not change due to language switching
 
-**术语对照**：
-- 素材 → Source
-- 实体 → Entity
-- 主题 → Topic
-- 摘要 → Summary
-- 综合 → Synthesis
-- 消化 → Ingest
-- 对比 → Comparison
-- 深度报告 → Deep Dive Report
-- 知识图谱 → Knowledge Graph
-
----
-
-## 工作流 1：init（初始化知识库）
-
-### 前置检查（含多知识库 CWD 检查）
-
-1. 先检查**当前工作目录**是否包含 `.wiki-schema.md`
-   - 如果包含 → 当前目录已经是一个知识库，提示用户已存在并询问是否要重新初始化
-2. 如果当前目录没有 → 读取 `~/.llm-wiki-path` 文件
-   - 如果存在 → 提示用户已有一个知识库（显示路径），询问是要新建还是切换到那个
-3. 两个都没有 → 进入初始化流程
-
-### 步骤
-
-1. **询问知识库主题**（先向用户提问）：
-   - "你的知识库要围绕什么主题？比如'AI 学习笔记'、'产品竞品分析'、'读书笔记'"
-   - 如果用户没想法，默认用"我的知识库"
-
-2. **询问知识库语言**（先向用户提问）：
-   - "知识库内容用什么语言？中文 / English（默认中文）"
-   - 选项：`zh`（中文）或 `en`（English）
-   - 如果用户没有明确说，默认 `zh`
-   - 将选择记录为 `WIKI_LANG`（`zh` 或 `en`）
-
-3. **询问保存位置**（先向用户提问）：
-   - 默认：`~/Documents/我的知识库/`（zh）或 `~/Documents/my-wiki/`（en）
-   - 用户可以自定义路径
-
-4. **运行初始化脚本**：
-   ```bash
-   bash ${SKILL_DIR}/scripts/init-wiki.sh "<路径>" "<主题>"
-   ```
-
-5. **补充初始化结果说明**：
-   - `init-wiki.sh` 会同时生成 `purpose.md` 和 `.wiki-cache.json`
-   - `purpose.md` 和 `.wiki-schema.md` 同级存放，用来记录研究目标、关键问题和研究范围
-   - 提醒用户优先填写核心目标和关键问题；这些内容写在 `purpose.md` 里，后续 ingest 会优先参考这里的方向
-
-6. **写入语言配置并本地化种子文件**：
-   - 将 `.wiki-schema.md` 中的 `语言：{{LANGUAGE}}` 替换为：
-     - `zh` → `语言：中文`（种子文件保持中文，无需额外处理）
-     - `en` → `语言：English`，**同时**覆写以下种子文件为英文版：
-   - 如果 `WIKI_LANG=en`，读取 `${SKILL_DIR}/templates/index-en-template.md`、`${SKILL_DIR}/templates/overview-en-template.md`、`${SKILL_DIR}/templates/log-en-template.md`，将 `{{DATE}}` 和 `{{TOPIC}}` 替换为实际值后，分别写入 `index.md`、`wiki/overview.md`、`log.md`
-
-7. **记录路径**到 `~/.llm-wiki-path`：
-   ```bash
-   echo "<路径>" > ~/.llm-wiki-path
-   ```
-
-8. **输出引导**（根据 `WIKI_LANG` 切换语言）：
-
-   **中文（zh）**：
-   ```
-   知识库已创建！路径：<路径>
-
-   接下来你可以：
-   - 给我一个链接，我会自动提取并整理（网页、X/Twitter、公众号、知乎等）
-   - 小红书内容请直接粘贴文本给我（暂不支持自动提取）
-   - 给我一个本地文件路径（PDF、Markdown 等）
-   - 直接粘贴文本内容
-   - 批量消化：给我一个文件夹路径
-
-   推荐：用 Obsidian 打开这个文件夹，可以实时看到知识库的构建效果。
-   ```
-   （英文版按「输出语言规则」生成，结构相同。）
+**Terminology Mapping**:
+- Source
+- Entity
+- Topic
+- Summary
+- Synthesis
+- Ingest
+- Comparison
+- Deep Dive Report
+- Knowledge Graph
 
 ---
 
-## 工作流 2：ingest（消化素材）
+## Workflow 1: init (Initialize Knowledge Base)
 
-这是最核心的工作流。用户给一个素材进来，AI 做所有的整理工作。
+### Pre-checks (Including Multi-Wiki CWD Check)
 
-### 前置检查
+1. First check whether the **current working directory** contains `.wiki-schema.md`
+   - If it does → the current directory is already a knowledge base; inform the user it exists and ask whether to re-initialize
+2. If the current directory does not → read the `~/.llm-wiki-path` file
+   - If it exists → inform the user that a knowledge base already exists (show the path); ask whether to create a new one or switch to that one
+3. Neither exists → proceed with initialization
 
-执行**通用前置检查**（见上方定义）。
+### Steps
 
-### 隐私自查提示（首次进入 ingest 必须执行）
+1. **Ask for the knowledge base topic** (prompt the user first):
+   - "What topic should your knowledge base focus on? For example, 'AI Learning Notes', 'Product Competitor Analysis', 'Reading Notes'"
+   - If the user has no preference, default to "My Knowledge Base"
 
-在开始提取或分析任何内容之前，AI **必须**先对用户说下面这句话，然后等待确认：
+2. **Ask for the knowledge base language** (prompt the user first):
+   - "What language should the knowledge base content use? English / Chinese (default: English)"
+   - Options: `en` (English) or `zh` (Chinese)
+   - If the user does not specify, default to `en`
+   - Record the choice as `WIKI_LANG` (`zh` or `en`)
 
-> 在开始分析这份素材前，请先快速确认里面**不**包含这些敏感内容：
+3. **Ask for the save location** (prompt the user first):
+   - Default: `~/Documents/my-wiki/`
+   - The user can customize the path
+
+4. **Run the initialization script**:
+   ```bash
+   bash ${SKILL_DIR}/scripts/init-wiki.sh "<path>" "<topic>"
+   ```
+
+5. **Provide supplementary initialization notes**:
+   - `init-wiki.sh` also generates `purpose.md` and `.wiki-cache.json`
+   - `purpose.md` is stored alongside `.wiki-schema.md` and records research goals, key questions, and research scope
+   - Remind the user to fill in core goals and key questions first; these are written in `purpose.md`, and subsequent ingests will prioritize directions listed there
+
+6. **Write language configuration and localize seed files**:
+   - Replace `语言：{{LANGUAGE}}` in `.wiki-schema.md` with:
+     - `zh` → `语言：中文` (seed files remain in Chinese; no additional processing needed)
+     - `en` → `语言：English`, **and also** overwrite the following seed files with English versions:
+   - If `WIKI_LANG=en`, read `${SKILL_DIR}/templates/index-en-template.md`, `${SKILL_DIR}/templates/overview-en-template.md`, `${SKILL_DIR}/templates/log-en-template.md`, replace `{{DATE}}` and `{{TOPIC}}` with actual values, then write them to `index.md`, `wiki/overview.md`, `log.md` respectively
+
+7. **Record the path** to `~/.llm-wiki-path`:
+   ```bash
+   echo "<path>" > ~/.llm-wiki-path
+   ```
+
+8. **Output onboarding guide** (switch language based on `WIKI_LANG`):
+
+   ```
+   Knowledge base created! Path: <path>
+
+   What you can do next:
+   - Give me a link and I'll automatically extract and organize it (web pages, X/Twitter, etc.)
+   - For Xiaohongshu content, please paste the text directly (automatic extraction not yet supported)
+   - Give me a local file path (PDF, Markdown, etc.)
+   - Paste text content directly
+   - Batch ingest: give me a folder path
+
+   Recommended: Open this folder in Obsidian to see the knowledge base being built in real time.
+   ```
+
+---
+
+## Workflow 2: ingest (Ingest Source)
+
+This is the most critical workflow. The user provides a source, and AI handles all the organizing.
+
+### Pre-checks
+
+Execute the **common pre-checks** (defined above).
+
+### Privacy Self-check Prompt (Must execute on first entry into ingest)
+
+Before starting any extraction or analysis, the AI **must** say the following to the user and then wait for confirmation:
+
+> Before analyzing this source, please quickly confirm that it does **not** contain any of the following sensitive information:
 >
-> - 手机号码（如 138xxxxxxxx）
-> - 身份证号（18 位数字）
-> - API 密钥（`sk-...`、`AIzaSy...`、`OPENAI_API_KEY=`、`ANTHROPIC_API_KEY=`、`Bearer ...`）
-> - 明文密码（`password=`、`passwd=`）
-> - 其他你不希望进入知识库的个人信息
+> - Phone numbers (e.g., 138xxxxxxxx)
+> - National ID numbers (18-digit numbers)
+> - API keys (`sk-...`, `AIzaSy...`, `OPENAI_API_KEY=`, `ANTHROPIC_API_KEY=`, `Bearer ...`)
+> - Plaintext passwords (`password=`, `passwd=`)
+> - Any other personal information you do not want in the knowledge base
 >
-> 如果素材里有上面任何一项，请先用文本编辑器删除或脱敏后再继续。
-> llm-wiki **不会**自动过滤这些内容，处理后的内容会进入你的知识库。
+> If the source contains any of the above, please remove or redact them with a text editor before continuing.
+> llm-wiki does **not** automatically filter this content — processed content will enter your knowledge base.
 >
-> 确认无上述内容请回复 `y`，要中止请回复 `n`。
+> Reply `y` to confirm none of the above are present, or `n` to abort.
 
-**流程规则**：
+**Flow rules**:
 
-- 用户回复 `y`（或"可以"、"继续"、"没有"等明确肯定）→ 继续执行后续步骤
-- 用户回复 `n`（或"停"、"取消"等明确否定）→ 终止本次 ingest，提示用户清理后再来
-- 其他不明确的回复 → 再问一次，最多两次；两次都不是明确 y/n 则终止
-- **绕过规则**：如果用户在当前对话里已经明确说过"素材里没有敏感信息，直接开始"，
-  或者用户是在 `batch-ingest` 流程中（已经在顶层确认过一次），AI 可以跳过这一步
+- User replies `y` (or "yes", "continue", "none", or other clear affirmative) → proceed with subsequent steps
+- User replies `n` (or "stop", "cancel", or other clear negative) → terminate this ingest and prompt the user to clean up before trying again
+- Other ambiguous replies → ask once more, up to two times; if neither attempt yields a clear y/n, terminate
+- **Bypass rule**: If the user has already explicitly stated "there is no sensitive information in the source, just start" in the current conversation, or the user is within a `batch-ingest` flow (already confirmed once at the top level), AI may skip this step
 
-**为什么是自查清单而不是脚本**：
-- 正则在非结构化文本（聊天记录、笔记）里误报率很高，错过真的敏感词，误报无害的普通词
-- 把判断权还给用户，比让脚本决定更可靠
-- 对新手更友好，不会遇到看不懂的脚本报错
+**Why a self-check list instead of a script**:
+- Regex has a high false-positive rate in unstructured text (chat logs, notes), missing real sensitive data while flagging harmless words
+- Giving the user the judgment is more reliable than letting a script decide
+- More beginner-friendly — users won't encounter confusing script errors
 
-### 素材提取路由
+### Source Extraction Routing
 
-根据素材类型自动路由到最佳提取方式：
+Automatically route to the best extraction method based on source type:
 
-**外挂前置判断**：
+**Adapter pre-check logic**:
 
-- URL 先调用 `bash ${SKILL_DIR}/scripts/source-registry.sh match-url "<url>"`
-- 本地文件先调用 `bash ${SKILL_DIR}/scripts/source-registry.sh match-file "<path>"`
-- 纯文本粘贴直接调用 `bash ${SKILL_DIR}/scripts/source-registry.sh get plain_text`
-- `source-registry.sh` 返回 10 列：`source_id`、`source_label`、`source_category`、`input_mode`、`match_rule`、`raw_dir`、`adapter_name`、`dependency_name`、`dependency_type`、`fallback_hint`
-- 调用 `bash ${SKILL_DIR}/scripts/adapter-state.sh check <source_id>`
-- 从 `adapter-state.sh check` 的 8 列结果里读取 `state`、`detail`、`recovery_action`、`install_hint`、`fallback_hint`
-- 如果 `state=not_installed` / `env_unavailable` / `unsupported` → 不调用外挂，直接按 `detail`、`recovery_action`、`install_hint`、`fallback_hint` 告诉用户下一步
-- 只有返回 `available` 时，才继续自动提取
+- For URLs, first call `bash ${SKILL_DIR}/scripts/source-registry.sh match-url "<url>"`
+- For local files, first call `bash ${SKILL_DIR}/scripts/source-registry.sh match-file "<path>"`
+- For pasted plain text, directly call `bash ${SKILL_DIR}/scripts/source-registry.sh get plain_text`
+- `source-registry.sh` returns 10 columns: `source_id`, `source_label`, `source_category`, `input_mode`, `match_rule`, `raw_dir`, `adapter_name`, `dependency_name`, `dependency_type`, `fallback_hint`
+- Call `bash ${SKILL_DIR}/scripts/adapter-state.sh check <source_id>`
+- Read `state`, `detail`, `recovery_action`, `install_hint`, `fallback_hint` from the 8-column result of `adapter-state.sh check`
+- If `state=not_installed` / `env_unavailable` / `unsupported` → do not call the adapter; directly inform the user of next steps using `detail`, `recovery_action`, `install_hint`, `fallback_hint`
+- Only proceed with automatic extraction when the return value is `available`
 
-**URL 类素材**（统一走来源总表，不手写域名表）：
+**URL-type sources** (unified via source registry, no hardcoded domain table):
 
-> **Chrome 提示**（仅当 `adapter_name=baoyu-url-to-markdown` 时）：
-> adapter-state.sh check 会把“提取器可用”与“是否存在 9222 可复用会话”分开表达。
-> 如果 check 返回 `available`，正常调用外挂；即使 detail 提示未检测到 9222，也继续执行。baoyu-url-to-markdown 会自己处理 Chrome 启动，**继续执行，不要等待用户确认**。
-> 只有在你想复用当前已登录的 Chrome 会话时，才需要手动开启 9222。
-> 如果提取仍然失败（通常是页面需要登录态，如 X/Twitter、知乎等），可提示用户开启调试端口复用已登录会话：`open -na "Google Chrome" --args --remote-debugging-port=9222`
+> **Chrome note** (only when `adapter_name=baoyu-url-to-markdown`):
+> adapter-state.sh check separates "extractor available" from "whether a reusable session exists on port 9222".
+> If check returns `available`, call the adapter normally; even if detail indicates no 9222 session was detected, proceed anyway. baoyu-url-to-markdown handles Chrome launch on its own — **continue execution, do not wait for user confirmation**.
+> You only need to manually open port 9222 if you want to reuse a currently logged-in Chrome session.
+> If extraction still fails (typically because the page requires a login session, such as X/Twitter, etc.), you can prompt the user to open the debug port to reuse their logged-in session: `open -na "Google Chrome" --args --remote-debugging-port=9222`
 
-- 如果 `source_category=manual_only` → 不调用外挂，直接使用 `fallback_hint`
-- 如果 `adapter_name=wechat-article-to-markdown` → 执行 `wechat-article-to-markdown "<URL>"`
-- 如果 `adapter_name=youtube-transcript` → 调用 `youtube-transcript`
-- 如果 `adapter_name=baoyu-url-to-markdown` → 调用 `baoyu-url-to-markdown`
+- If `source_category=manual_only` → do not call the adapter; directly use `fallback_hint`
+- If `adapter_name=youtube-transcript` → call `youtube-transcript`
+- If `adapter_name=baoyu-url-to-markdown` → call `baoyu-url-to-markdown`
 
-**本地文件**：
-- 统一走 `bash ${SKILL_DIR}/scripts/source-registry.sh match-file "<path>"`
-- 命中后直接读取，不调用外挂
+**Local files**:
+- Unified via `bash ${SKILL_DIR}/scripts/source-registry.sh match-file "<path>"`
+- After matching, read the file directly without calling an adapter
 
-**纯文本粘贴**：
-- 统一视为 `plain_text`
-- 直接使用用户提供的文本
+**Pasted plain text**:
+- Uniformly treated as `plain_text`
+- Directly use the user-provided text
 
-**统一回退规则**：
+**Unified fallback rules**:
 
-- 对自动提取结果，统一运行 `bash ${SKILL_DIR}/scripts/adapter-state.sh classify-run <source_id> <exit_code> <output_path>`
-- 从 `classify-run` 返回的 8 列结果里读取 `state`、`detail`、`recovery_action`、`fallback_hint`
-- 如果返回 `runtime_failed` → 按 `detail`、`recovery_action`、`fallback_hint` 告诉用户“这次自动提取失败，可以先重试一次；如果还不行，就改走手动入口”
-- 如果返回 `empty_result` → 按 `detail`、`recovery_action`、`fallback_hint` 告诉用户“自动提取没有拿到有效正文，请手动补全文本后继续”
-- 其他状态也使用同一份返回结果，不再手写第二套回退文案
+- For automatic extraction results, uniformly run `bash ${SKILL_DIR}/scripts/adapter-state.sh classify-run <source_id> <exit_code> <output_path>`
+- Read `state`, `detail`, `recovery_action`, `fallback_hint` from the 8-column result of `classify-run`
+- If `runtime_failed` is returned → inform the user using `detail`, `recovery_action`, `fallback_hint`: "This automatic extraction failed. You can retry once; if it still fails, fall back to manual entry."
+- If `empty_result` is returned → inform the user using `detail`, `recovery_action`, `fallback_hint`: "Automatic extraction did not retrieve valid body text. Please manually provide the text to continue."
+- Other states also use the same returned result; do not write a second set of fallback messages
 
-### 内容分级处理
+### Content Tiered Processing
 
-根据素材长度和信息密度自动选择处理级别：
+Automatically select the processing tier based on source length and information density:
 
-**判断标准**：
-- 素材内容 > 1000 字 → **完整处理**
-- 素材内容 <= 1000 字（短推文、小红书笔记等）→ **简化处理**
+**Criteria**:
+- Source content > 1000 characters → **full processing**
+- Source content <= 1000 characters (short tweets, Xiaohongshu notes, etc.) → **simplified processing**
 
-### 完整处理流程（长素材 > 1000 字）
+### Full Processing Flow (Long sources > 1000 characters)
 
-1. **提取素材内容**：按上面的路由获取素材文本
+1. **Extract source content**: Obtain the source text via the routing above
 
-2. **保存原始素材**到 `raw/` 对应目录：
-   - 根据素材类型保存到对应目录（articles/、tweets/、wechat/、xiaohongshu/、zhihu/ 等）
-   - 文件名格式：`{日期}-{短标题}.md`
-   - 如果是 URL 类素材，在文件头部记录原始 URL
+2. **Save raw source** to the corresponding `raw/` directory:
+   - Save to the appropriate directory based on source type (articles/, tweets/, xiaohongshu/, etc.)
+   - Filename format: `{date}-{short-title}.md`
+   - For URL-type sources, record the original URL at the top of the file
 
-3. **读取上下文**：
-   - 优先顺序：`purpose.md` > `.wiki-schema.md` > `index.md`
-   - 如果 `purpose.md` 存在，先读取其中的核心目标、关键问题和研究范围
-   - 用 `purpose.md` 指导后续实体、主题、关联的取舍和权重
+   **Image detection and tracking**: After saving the source, scan the content for image references (`![` or `<img` or `.png`/`.jpg`/`.gif`/`.svg` URLs). If images are detected:
+   - Tell the user: "The source contains {N} image references. Image links may expire — consider manually downloading them to `raw/assets/` (Obsidian users can bind a hotkey in settings to download attachments in one click)"
+   - In the subsequent source page's frontmatter:
+     - `images`: record the number of detected image references
+     - `image_paths`: if the user has already downloaded images to `raw/assets/`, record paths in YAML block list format; if not yet downloaded, keep as an empty array `[]`. Example:
+       ```yaml
+       image_paths:
+         - raw/assets/2026-01-15-fig1.png
+         - raw/assets/2026-01-15-fig2.jpg
+       ```
+   - Do not block the ingest flow; this is informational only
+   - After the user downloads images later, they can manually update `image_paths` in the source page, or have AI assist during the next lint
 
-4. **缓存检查**：
-   - 在进入 LLM 处理前，先运行：
+3. **Read context**:
+   - Priority order: `purpose.md` > `.wiki-schema.md` > `index.md`
+   - If `purpose.md` exists, first read its core goals, key questions, and research scope
+   - Use `purpose.md` to guide subsequent entity, topic, and connection selection and weighting
+
+4. **Cache check**:
+   - Before entering LLM processing, first run:
      ```bash
-     bash ${SKILL_DIR}/scripts/cache.sh check “<raw 文件路径>”
+     bash ${SKILL_DIR}/scripts/cache.sh check "<raw file path>"
      ```
-   - 如果返回 `HIT` 或 `HIT(repaired)` → 跳过本次 LLM 调用，直接读取已有 wiki 页面，并告诉用户这是”无变化，直接复用已有结果”
-     - `HIT(repaired)` 表示缓存自愈修复成功（上次 update 被跳过但 source 页面存在）
-   - 如果返回 `MISS:<reason>` → 继续执行下面的两步流程
-     - `MISS:no_entry` — 首次处理此素材（正常情况）
-     - `MISS:hash_changed` — 素材内容有变化，需要重新处理
-     - `MISS:no_source` — 有缓存记录但 source 页面被删除了
+   - If it returns `HIT` or `HIT(repaired)` → skip this LLM call, directly read existing wiki pages, and tell the user "no changes detected, reusing existing results"
+     - `HIT(repaired)` indicates cache self-heal was successful (the previous update was skipped but the source page exists and source_path matches)
+   - If it returns `MISS:<reason>` → continue with the two-step flow below
+     - `MISS:no_entry` — first time processing this source (normal case)
+     - `MISS:hash_changed` — source content has changed; needs reprocessing
+     - `MISS:no_source` — cache entry exists but the source page was deleted
+     - `MISS:repaired_needs_verify` — found a source page with the same name but source_path does not match; needs reprocessing to confirm correct association
 
-5. **Step 1：结构化分析**：
-   - 输入：原始内容 + `purpose.md` + 现有 wiki 结构（至少读取 `index.md` 概要）
-   - 输出：JSON 格式的分析结果，不持久化，只在当前 ingest 流程里临时传递
-   - JSON 至少包含 `entities`、`topics`、`connections`
-   - `confidence` 是必需字段，缺失就视为格式异常并触发单步回退
+5. **Step 1: Structured analysis**:
+   - Input: raw content + `purpose.md` + existing wiki structure (read at least the `index.md` overview)
+   - Output: JSON-format analysis result, not persisted, only passed temporarily within the current ingest flow
+   - JSON must contain at least `entities`, `topics`, `connections`
+   - `confidence` is a required field; if missing, treat as a format anomaly and trigger single-step fallback
 
    ```json
    {
-     "source_summary": "一句话概括",
-     "entities": [{"name": "xxx", "type": "concept", "relevance": "high", "confidence": "EXTRACTED"}],
+     "source_summary": "one-sentence summary",
+     "entities": [{"name": "xxx", "type": "concept", "relevance": "high", "confidence": "EXTRACTED", "evidence": "excerpt from source or reasoning basis"}],
      "topics": [{"name": "xxx", "importance": "high"}],
-     "connections": [{"from": "A", "to": "B", "type": "因果", "confidence": "INFERRED"}],
+     "connections": [{"from": "A", "to": "B", "type": "causal", "confidence": "INFERRED", "evidence": "reasoning basis"}],
      "contradictions": [{"claim_a": "...", "claim_b": "...", "context": "..."}],
      "new_vs_existing": {"new_entities": [], "updates": []}
    }
    ```
 
-   置信度赋值规则（Claude 必须遵守）：
-   - EXTRACTED：信息直接出现在原文里，字面可以找到
-   - INFERRED：信息是从多处原文推断出来的，原文没有直接说
-   - AMBIGUOUS：原文说法不清楚，或者有歧义
-   - UNVERIFIED：信息来自 Claude 的背景知识，原文没有证据
+   Confidence assignment rules (Claude must follow):
+   - EXTRACTED: Information appears directly in the source text and can be found verbatim. **Should provide a source excerpt in the `evidence` field** (recommended <= 50 characters); missing evidence triggers a WARN from the script but does not block
+   - INFERRED: Information is inferred from multiple parts of the source text; the source does not state it directly. **Should explain the reasoning basis in the `evidence` field**; missing evidence triggers a WARN from the script but does not block
+   - AMBIGUOUS: The source text is unclear or has ambiguity. `evidence` is optional
+   - UNVERIFIED: Information comes from Claude's background knowledge; no evidence in the source. `evidence` is optional
 
-   Step 1 完成后，必须执行验证：
+   After Step 1 is complete, validation must be performed:
    1. mkdir -p {wiki_root}/.wiki-tmp
-   2. 将 Step 1 JSON 写入 {wiki_root}/.wiki-tmp/step1-latest.json
-   3. 调用 bash ${SKILL_DIR}/scripts/validate-step1.sh {wiki_root}/.wiki-tmp/step1-latest.json
-   4. 验证完成后删除 {wiki_root}/.wiki-tmp/step1-latest.json
+   2. Write the Step 1 JSON to {wiki_root}/.wiki-tmp/step1-latest.json
+   3. Call bash ${SKILL_DIR}/scripts/validate-step1.sh {wiki_root}/.wiki-tmp/step1-latest.json
+   4. Delete {wiki_root}/.wiki-tmp/step1-latest.json after validation completes
 
-   如果脚本返回非 0，自动回退到单步 ingest（不进行 Step 2）。
+   If the script returns non-zero, automatically fall back to single-step ingest (do not proceed to Step 2).
 
-6. **Step 2：页面生成**：
-   - 输入：原始内容 + `purpose.md` + Step 1 的分析结果 + 现有相关 wiki 页面
-   - 输出：所有需要创建或更新的 wiki 页面内容
-   - Step 2 负责完成原流程中的素材摘要、实体页、主题页、index、log 更新
+6. **Step 2: Page generation**:
+   - Input: raw content + `purpose.md` + Step 1 analysis results + existing related wiki pages
+   - **Context loading rule**: Only read existing pages listed in Step 1's `new_vs_existing.updates`; if a page exceeds 2000 characters, only read the frontmatter + sections that need updating
+   - Output: All wiki page content that needs to be created or updated
+   - Step 2 is responsible for completing the source summary, entity pages, topic pages, index, and log updates from the original flow
 
-7. **容错回退**：
-   - 如果 Step 1 不是有效 JSON，或者缺少 `entities`、`topics`、`confidence` 等必需字段，自动回退到原来的单步流程
-   - 回退时，所有本次新生成内容统一加上：
+7. **Error recovery fallback**:
+   - If Step 1 is not valid JSON, or is missing required fields like `entities`, `topics`, `confidence`, automatically fall back to the original single-step flow
+   - During fallback, all newly generated content in this session uniformly receives:
      ```markdown
      <!-- confidence: UNVERIFIED -->
      ```
-   - 同时在页面顶部加注释说明本次处理因格式问题降级，避免出现“部分标注、部分没标注”的状态
+   - Also add a comment at the top of the page explaining that this processing was downgraded due to format issues, to avoid a "partially annotated, partially not" state
 
-8. **生成素材摘要页**（`wiki/sources/{日期}-{短标题}.md`）：
-   - 参考 `templates/source-template.md` 的格式
-   - frontmatter 里保留 `sources: []` 字段；如果这次 ingest 有明确来源，按实际 raw/source 引用填入
-   - 包含：基本信息、核心观点、关键概念、与其他素材的关联、原文精彩摘录
-   - 对 Step 1 中标记为 `INFERRED` 或 `AMBIGUOUS` 的关系，用 HTML 注释保留置信度：
+8. **Generate source summary page** (`wiki/sources/{date}-{short-title}.md`):
+   - Follow the format from `templates/source-template.md`
+   - Keep the `sources: []` field in frontmatter; if this ingest has explicit sources, fill in actual raw/source references
+   - Include: basic information, core insights, key concepts, connections to other sources, notable excerpts from the original
+   - For relationships marked as `INFERRED` or `AMBIGUOUS` in Step 1, preserve confidence via HTML comments:
      ```markdown
      <!-- confidence: INFERRED -->
      <!-- confidence: AMBIGUOUS -->
      ```
-   - **写入 source 页面时，必须使用 `create-source-page.sh`**（自动更新缓存）：
+   - **When writing the source page, you must use `create-source-page.sh`** (automatically updates cache):
      ```bash
-     # 先把页面内容写到临时文件
-     echo "<页面内容>" > /tmp/source-content.tmp
-     # 调用脚本原子写入 + 缓存更新
-     bash ${SKILL_DIR}/scripts/create-source-page.sh "<raw 文件路径>" "wiki/sources/{日期}-{短标题}.md" /tmp/source-content.tmp
+     # First write the page content to a temp file
+     echo "<page content>" > /tmp/source-content.tmp
+     # Call the script for atomic write + cache update
+     bash ${SKILL_DIR}/scripts/create-source-page.sh "<raw file path>" "wiki/sources/{date}-{short-title}.md" /tmp/source-content.tmp
      ```
-   - 如果脚本返回 `SUCCESS` → 写入和缓存都已更新
-   - 如果脚本返回 `ERROR` → 写入或缓存失败，检查报错信息后重试
+   - If the script returns `SUCCESS` → both the write and cache have been updated
+   - If the script returns `ERROR` → the write or cache failed; check the error message and retry
 
-9. **更新或创建实体页**（`wiki/entities/`）：
-   - 对每个关键概念，检查 `wiki/entities/` 下是否已有对应页面
-   - 如果已有 → 追加新信息，更新"不同素材中的观点"部分
-   - 如果没有 → 创建新实体页，参考 `templates/entity-template.md`
-   - 使用 `[[实体名]]` 语法做双向链接
+9. **Update or create entity pages** (`wiki/entities/`):
+   - For each key concept, check whether a corresponding page already exists under `wiki/entities/`
+   - If it exists → append new information, update the "perspectives from different sources" section
+   - If it does not exist → create a new entity page, following `templates/entity-template.md`
+   - Use `[[entity name]]` syntax for bidirectional linking
 
-10. **更新或创建主题页**（`wiki/topics/`）：
-   - 识别素材涉及的主要研究主题
-   - 如果已有对应主题页 → 更新素材汇总表和核心观点
-   - 如果没有 → 创建新主题页，参考 `templates/topic-template.md`
+10. **Update or create topic pages** (`wiki/topics/`):
+   - Identify the main research topics covered by the source
+   - If a corresponding topic page already exists → update the source summary table and core insights
+   - If it does not exist → create a new topic page, following `templates/topic-template.md`
 
-11. **更新 index.md**：
-   - 在对应分类下添加新条目
-   - 更新概览统计数字
+11. **Update index.md**:
+   - Add new entries under the corresponding category
+   - Update overview statistics
 
-12. **更新 log.md**：
-   - log.md 追加格式：`## {日期} ingest | {素材标题}`
-   - 记录新增和更新的页面列表
-   - 注意：缓存更新已在 Step 8 通过 `create-source-page.sh` 自动完成，此处无需再调用 `cache.sh update`
+12. **Update log.md**:
+   - log.md append format: `## {date} ingest | {source title}`
+   - Record the list of newly added and updated pages
+   - Note: cache update was already completed automatically in Step 8 via `create-source-page.sh`; no need to call `cache.sh update` here
 
-13. **向用户展示结果**（按 `WIKI_LANG` 切换语言）：
+13. **Display results to the user** (switch language based on `WIKI_LANG`):
 
-   **中文（zh）**：
    ```
-   已消化：{素材标题}
+   Ingested: {source title}
 
-   新增页面：
-   - {素材摘要页}
-   - {新实体页1}
-   - {新主题页1}
+   New pages:
+   - {source summary page}
+   - {new entity page 1}
+   - {new topic page 1}
 
-   更新页面：
-   - {已有实体页2}（追加了新信息）
+   Updated pages:
+   - {existing entity page 2} (appended new information)
 
-   发现关联：
-   - 这篇素材和 [[已有素材]] 在 {某概念} 上有联系
+   Connections found:
+   - This source is connected to [[existing source]] via {concept}
+
+   Alias suggestions: (shown only when new synonym relationships are discovered)
+   - Suggested alias addition: {term A} = {term B}
    ```
-   （英文版按「输出语言规则」生成，结构相同。）
 
-### 简化处理流程（短素材 <= 1000 字）
+### Simplified Processing Flow (Short sources <= 1000 characters)
 
-适用于短推文、小红书笔记、简短评论等。
+Suitable for short tweets, Xiaohongshu notes, brief comments, etc.
 
-1. **保存原始素材**到对应 `raw/` 目录
-2. **读取上下文并检查缓存**：
-   - 仍然优先读取 `purpose.md`
-   - 仍然先运行 `bash ${SKILL_DIR}/scripts/cache.sh check "<raw 文件路径>"`
-   - 如果缓存命中（`HIT` 或 `HIT(repaired)`），直接复用已有结果
-3. **生成简化摘要页**（`wiki/sources/`）：
-   - frontmatter 里写入 `sources: []`
-   - 只包含基本信息和核心观点
-   - 不写"原文精彩摘录"部分
-   - **写入 source 页面时同样使用 `create-source-page.sh`**（自动更新缓存）
-4. **提取 1-3 个关键概念**：
-   - 如果对应实体页已存在 → 追加一句话说明
-   - 如果不存在 → 在摘要页中用 `[待创建: [[概念名]]]` 标记
-5. **更新 index.md 和 log.md**（缓存已由 `create-source-page.sh` 自动更新）
-6. **跳过**：主题页创建/更新、overview 更新
+1. **Save raw source** to the corresponding `raw/` directory
+   - **Image detection and tracking**: Same as the full processing flow — scan for image references and notify the user; record count and paths in the source page's `images` and `image_paths` frontmatter fields
+2. **Read context and check cache**:
+   - Still prioritize reading `purpose.md`
+   - Still run `bash ${SKILL_DIR}/scripts/cache.sh check "<raw file path>"` first
+   - If cache hits (`HIT` or `HIT(repaired)`), directly reuse existing results
+3. **Generate simplified summary page** (`wiki/sources/`):
+   - Write `sources: []` in frontmatter
+   - Include only basic information and core insights
+   - Omit the "notable excerpts from original" section
+   - **When writing the source page, also use `create-source-page.sh`** (automatically updates cache)
+4. **Extract 1-3 key concepts**:
+   - If the corresponding entity page already exists → append a one-sentence note
+   - If it does not exist → mark in the summary page with `[to be created: [[concept name]]]`
+5. **Update index.md and log.md** (cache already updated automatically by `create-source-page.sh`)
+6. **Skip**: topic page creation/update, overview update
 
-7. **向用户展示简化结果**（按 `WIKI_LANG` 切换语言）：
+7. **Display simplified results to the user** (switch language based on `WIKI_LANG`):
 
-   **中文（zh）**：
    ```
-   已消化：{素材标题}（短内容，简化处理）
+   Ingested: {source title} (short content, simplified processing)
 
-   新增：
-   - 素材摘要页
+   Added:
+   - Source summary page
 
-   待完善：
-   - [待创建: [[概念名]]]（积累更多素材后整理）
+   To be developed:
+   - [to be created: [[concept name]]] (will be organized after accumulating more sources)
    ```
-   （英文版按「输出语言规则」生成，结构相同。）
 
 ---
 
-## 工作流 3：batch-ingest（批量消化）
+## Workflow 3: batch-ingest (Batch Ingest)
 
-当用户给了一个文件夹路径，或者说"把这些都整理一下"。
+When the user provides a folder path, or says "organize all of these."
 
-### 步骤
+### Steps
 
-1. **确认知识库路径**：
-   - 执行**通用前置检查**（见上方定义），获取知识库根路径和 `WIKI_LANG`
+1. **Confirm knowledge base path**:
+   - Execute the **common pre-checks** (defined above) to obtain the knowledge base root path and `WIKI_LANG`
 
-2. **列出所有可处理文件**：
-   - 支持的格式：`.md`, `.txt`, `.pdf`, `.html`
-   - 忽略：隐藏文件、`.git` 目录、`node_modules` 等
+2. **List all processable files**:
+   - Supported formats: `.md`, `.txt`, `.pdf`, `.html`
+   - Ignore: hidden files, `.git` directory, `node_modules`, etc.
 
-3. **展示文件列表**，确认处理范围（按 `WIKI_LANG` 切换语言）：
+3. **Display file list** and confirm processing scope (switch language based on `WIKI_LANG`):
 
-   **zh**：
    ```
-   发现 {N} 个文件待处理：
+   Found {N} files to process:
    1. file1.pdf
    2. file2.md
    3. file3.txt
 
-   预计需要 {N} 轮处理。是否开始？
+   Estimated {N} rounds of processing. Proceed?
    ```
-   （英文版按「输出语言规则」生成，结构相同。）
 
-4. **逐个处理**：对每个文件执行 ingest 工作流
-   - 每个文件先 `cache check`
-   - 命中缓存的文件直接跳过，不再进入 LLM 处理
-   - 只有 `MISS` 的文件才继续执行完整或简化处理
+4. **Process one by one**: Execute the ingest workflow for each file
+   - Run `cache check` for each file first
+   - Files with cache hits are skipped directly, without entering LLM processing
+   - Only files with `MISS` continue with full or simplified processing
 
-5. **每 5 个文件后暂停**，展示进度并询问是否继续（按 `WIKI_LANG` 切换语言）：
+5. **Pause every 5 files**, display progress and ask whether to continue (switch language based on `WIKI_LANG`):
 
-   **zh**：
    ```
-   进度：5/{N} 已完成
+   Progress: 5/{N} completed
 
-   本批处理结果：
-   - 新增素材摘要：5
-   - 新增实体页：3
-   - 更新已有页面：7
+   Batch results:
+   - New source summaries: 5
+   - New entity pages: 3
+   - Updated existing pages: 7
 
-   继续处理剩余 {M} 个文件？
+   Continue processing the remaining {M} files?
    ```
-   （英文版按「输出语言规则」生成，结构相同。）
 
-6. **全部完成后**：
-   - 运行一次 index.md 全量更新
-   - 输出总结报告（按 `WIKI_LANG` 切换语言）：
+6. **After all are complete**:
+   - Run a full index.md update
+   - Output a summary report (switch language based on `WIKI_LANG`):
 
-   **zh**：
    ```
-   批量消化完成！
+   Batch ingest complete!
 
-   处理了 {N} 个文件：
-   - 已跳过 N 个（无变化），处理 M 个（新增/更新）
-   - 成功：{S}
-   - 跳过（内容为空/格式不支持）：{K}
-   - 失败：{F}
+   Processed {N} files:
+   - Skipped N (no changes), processed M (new/updated)
+   - Succeeded: {S}
+   - Skipped (empty content / unsupported format): {K}
+   - Failed: {F}
 
-   新增页面：{total_new}
-   更新页面：{total_updated}
+   New pages: {total_new}
+   Updated pages: {total_updated}
    ```
-   （英文版按「输出语言规则」生成，结构相同。）
 
 ---
 
-## 工作流 4：query（查询知识库）
+## Workflow 4: query (Query Knowledge Base)
 
-### 步骤
+### Steps
 
-1. **确认知识库路径**：
-   - 执行**通用前置检查**（见上方定义），获取知识库根路径和 `WIKI_LANG`
-   - 如果没有可用知识库，提示用户先初始化
-2. **读取 index.md** 了解知识库全貌
-3. **搜索相关页面**：
-   - 先在 index.md 中定位相关分类和条目
-   - 再用 Grep 在 `wiki/` 目录下搜索关键词
-   - 读取最相关的 3-5 个页面
-4. **综合回答**：
-   - 按 `WIKI_LANG` 用对应语言回答用户的问题
-   - 标注信息来源（引用 wiki 页面，用 `[[页面名]]` 格式）
-   - 如果多个素材有不同观点，分别列出并标注来源
-5. **判断是否值得持久化**：
-   - 如果回答引用了 3 个及以上来源的综合分析，提示用户："是否保存此回答到知识库？"
-   - 少于 3 个来源时，默认只做即时回答，不主动建议持久化
+1. **Confirm knowledge base path**:
+   - Execute the **common pre-checks** (defined above) to obtain the knowledge base root path and `WIKI_LANG`
+   - If no knowledge base is available, prompt the user to initialize first
+2. **Read index.md** to understand the full scope of the knowledge base
+3. **Search for related pages**:
+   - **Alias expansion**: First read the "alias vocabulary" in `.wiki-schema.md`. If the user's query keyword matches an alias group, include all synonyms in that group in the search (e.g., searching "LLM" also searches "large language model")
+     - Expansion rule: Only expand within the matched group; do not propagate across groups (if A=B and B=C are two separate groups, searching A only expands the first group, without merging the second)
+     - Deduplication: The expanded keyword list is automatically deduplicated, ignoring empty items and whitespace-only items
+   - Locate related categories and entries in index.md (using all expanded keywords)
+   - Then use Grep to search all keywords (original + alias-expanded) under `wiki/`
+   - Sort by relevance: filename exact match > index.md entry match > body keyword hit count (multiple words from the same alias group hitting the same page count as one, to avoid inflated scores for alias-dense pages)
+   - **Paragraph limit**: After expansion, each keyword yields at most 3 matching paragraphs, with a total paragraph cap of 15
+   - Read the 3-5 most relevant pages
+   - **Single-page length limit**: If a page exceeds 2000 characters, only read frontmatter + first 500 characters + Grep-matched paragraphs (3 lines of context each), to avoid long pages consuming too much context
+4. **Synthesize an answer**:
+   - Answer the user's question in the language corresponding to `WIKI_LANG`
+   - Cite information sources (reference wiki pages using `[[page name]]` format)
+   - If multiple sources present different viewpoints, list them separately with source attribution
+5. **Determine whether persistence is worthwhile**:
+   - If the answer synthesizes 3 or more sources, prompt the user: "Would you like to save this answer to the knowledge base?"
+   - For fewer than 3 sources, default to an ephemeral answer without proactively suggesting persistence
 
-6. **重复检测**：
-   - 持久化前，先在 `wiki/queries/` 下搜索同主题页面
-   - 通过 frontmatter tags 和 title 匹配，判断是否已有同主题 query 页面
-   - 如果已有，提示用户是“更新现有页面”还是“新建一页”
-   - 如果用户选择更新旧页面，旧版页面增加 `superseded-by` 标记
+6. **Duplicate detection**:
+   - Before persisting, search for same-topic pages under `wiki/queries/`
+   - Match by frontmatter tags and title to determine if a same-topic query page already exists
+   - If one exists, ask the user whether to "update the existing page" or "create a new one"
+   - If the user chooses to update the old page, add a `superseded-by` marker to the old version
 
-7. **保存 query 页面**：
-   - 用 `templates/query-template.md` 生成页面
-   - 保存路径使用 `wiki/queries/{date}-{short-hash}.md`，避免同主题命名冲突
-   - frontmatter 必须包含 `type: query` 和 `derived: true`
-   - `derived: true` 表示这是衍生内容，不是一手素材
+7. **Save query page**:
+   - Generate the page using `templates/query-template.md`
+   - Save path uses `wiki/queries/{date}-{short-hash}.md` to avoid same-topic naming conflicts
+   - Frontmatter must include `type: query` and `derived: true`
+   - `derived: true` indicates this is derived content, not a primary source
 
-8. **自引用防护**：
-   - query 页面在后续 ingest 分析里视为二级来源，不作为主要知识来源
-   - 如果后续页面引用 query 页面里的信息，相关关系统一按 `INFERRED` 处理
-   - ingest 不主动扫描 `wiki/queries/`；只有当前问题确实需要时，才把 query 页面作为补充材料读取
+8. **Self-reference protection**:
+   - Query pages are treated as secondary sources in subsequent ingest analysis, not as primary knowledge sources
+   - If subsequent pages reference information from query pages, related relationships are uniformly treated as `INFERRED`
+   - Ingest does not proactively scan `wiki/queries/`; query pages are only read as supplementary material when the current question genuinely requires it
 
-9. **更新索引和日志**：
-   - 保存成功后，在 index.md 中加入 query 条目
-   - 同时在 log.md 中追加一条 query 保存记录
+9. **Update index and log**:
+   - After saving successfully, add a query entry in index.md
+   - Also append a query save record in log.md
 
 ---
 
-## 工作流 5：lint（健康检查）
+## Workflow 5: lint (Health Check)
 
-### 触发时机
+### Trigger Conditions
 
-- 用户主动说"检查知识库"
-- 每次 ingest 后，如果素材总数是 10 的倍数，主动建议运行 lint
+- The user explicitly says "check knowledge base"
+- After each ingest, if the total source count is a multiple of 10, proactively suggest running lint
 
-### 前置检查
+### Pre-checks
 
-执行**通用前置检查**（见上方定义）。如果没有可用知识库，提示用户先初始化。
+Execute the **common pre-checks** (defined above). If no knowledge base is available, prompt the user to initialize first.
 
-1. **确定检查范围**：
-   - 最近更新的 10 个页面（按文件修改时间排序）
-   - 随机抽查的 10 个页面（避免遗漏旧页面的问题）
-   - 如果页面总数 <= 20，检查全部
+1. **Determine check scope**:
+   - The 10 most recently updated pages (sorted by file modification time)
+   - 10 randomly sampled pages (to avoid missing issues in older pages)
+   - If total page count <= 20, check all pages
 
-2. **Step 0：调用脚本做机械检查**（必须先做，不要跳过）：
+2. **Step 0: Run the script for mechanical checks** (must be done first, do not skip):
 
    ```bash
    bash ${SKILL_DIR}/scripts/lint-runner.sh <wiki_root>
    ```
 
-   脚本负责三项**机械检查**（只需要精确匹配，不需要判断）：
-   - 孤立页面（`entities/` 下没有被其他页面引用的实体）
-   - 断链（`[[X]]` 链接指向的 `X.md` 不存在，支持 `[[X|别名]]` 语法）
-   - index 一致性（index.md 里有记录但文件缺失的条目）
+   The script handles three **mechanical checks** (requiring only exact matching, no judgment):
+   - Orphaned pages (entities under `entities/` not referenced by any other page)
+   - Broken links (`[[X]]` links where `X.md` does not exist, supports `[[X|alias]]` syntax)
+   - Index consistency (entries recorded in index.md but with missing files)
 
-   退出码：`0` = 运行完成，`1` = 脚本自身错误（路径不存在、index.md 缺失）。
-   如果 exit 1，向用户报告错误，不要继续。
-   如果 exit 0，把脚本 stdout 读进上下文，作为后续 AI 判断类检查的基础素材。
+   Exit codes: `0` = completed successfully, `1` = script error (path does not exist, index.md missing).
+   If exit 1, report the error to the user and do not continue.
+   If exit 0, read the script's stdout into context as foundation material for subsequent AI-judgment checks.
 
-3. **逐项检查**（AI 判断类，脚本做不了）：
+3. **Item-by-item checks** (AI judgment type, beyond what the script can do):
 
-   **矛盾信息**（阅读相关页面，检查是否有互相矛盾的说法）：
-   - 列出发现的矛盾
-   - 标注每处矛盾的来源页面
+   **Contradictory information** (read related pages, check for mutually contradictory claims):
+   - List discovered contradictions
+   - Annotate the source page for each contradiction
 
-   **交叉引用缺失**（检查相关主题的页面之间是否应该互相链接但没链）：
-   - 建议添加的交叉引用
+   **Missing cross-references** (check whether pages on related topics should be interlinked but are not):
+   - Suggest cross-references to add
 
-   **置信度报告**（统计 `EXTRACTED` / `INFERRED` / `AMBIGUOUS` / `UNVERIFIED`）：
-   - 高亮 `AMBIGUOUS` 条目，提醒用户优先验证
-   - 抽查标注为 EXTRACTED 的条目，检查是否能在原始素材里找到对应原文
-   - 如果发现 EXTRACTED 无法回溯到原文，提示用户回退为更低置信度或重新整理
+   **Confidence report** (tally `EXTRACTED` / `INFERRED` / `AMBIGUOUS` / `UNVERIFIED`):
+   - Highlight `AMBIGUOUS` entries, reminding the user to verify these first
+   - Spot-check entries marked as EXTRACTED to verify whether they can be traced back to the original source material
+   - If EXTRACTED entries cannot be traced to the original text, prompt the user to downgrade confidence or re-organize
 
-   **补充建议**：基于 Step 0 脚本的孤立页/断链输出，给出修复建议（脚本只列问题，不给方案）
-   - 孤立页面 → 建议从哪些相关页面添加 `[[链接]]`
-   - 断链 → 建议为哪些概念创建新页面，或改写引用为已有页面
+   **Supplementary recommendations**: Based on Step 0 script output for orphaned pages/broken links, provide repair suggestions (the script only lists issues, not solutions)
+   - Orphaned pages → suggest which related pages to add `[[links]]` from
+   - Broken links → suggest creating new pages for which concepts, or rewriting references to existing pages
 
-4. **输出报告**（按 `WIKI_LANG` 切换语言，整合 Step 0 脚本输出 + Step 3 AI 判断结果）：
+4. **Output report** (switch language based on `WIKI_LANG`, integrating Step 0 script output + Step 3 AI judgment results):
 
-   **zh**：
    ```
-   知识库健康检查报告
+   Knowledge Base Health Check Report
 
-   检查范围：最近更新 10 页 + 随机抽查 10 页（共 {N} 页）
+   Scope: 10 most recently updated + 10 randomly sampled ({N} total)
 
-   孤立页面（没有其他页面链接到它）：
-   - [[某页面]] → 建议从 [[相关页面]] 添加链接
+   Orphaned pages (no other pages link to them):
+   - [[some page]] → suggest adding a link from [[related page]]
 
-   断链（被链接但不存在）：
-   - [[某概念]] → 建议创建新页面
+   Broken links (linked but do not exist):
+   - [[some concept]] → suggest creating a new page
 
-   矛盾信息：
-   - 关于"XX"，[[页面A]] 说是 Y，但 [[页面B]] 说是 Z
+   Contradictory information:
+   - Regarding "XX", [[page A]] says Y, but [[page B]] says Z
 
-   缺失索引：
-   - {文件名} 存在但未记录在 index.md 中
+   Missing index entries:
+   - {filename} exists but is not recorded in index.md
 
-   置信度报告：
-   - EXTRACTED：{N}
-   - INFERRED：{N}
-   - AMBIGUOUS：{N}
-   - UNVERIFIED：{N}
+   Confidence report:
+   - EXTRACTED: {N}
+   - INFERRED: {N}
+   - AMBIGUOUS: {N}
+   - UNVERIFIED: {N}
    ```
-   （英文版按「输出语言规则」生成，结构相同。）
 
-5. **询问用户**：要自动修复哪些问题？（按 `WIKI_LANG` 用对应语言提问）
+5. **Ask the user**: Which issues should be auto-fixed? (ask in the language corresponding to `WIKI_LANG`)
 
 ---
 
-## 工作流 6：status（查看状态）
+## Workflow 6: status (View Status)
 
-### 前置检查
+### Pre-checks
 
-执行**通用前置检查**（见上方定义）。如果没有可用知识库，提示用户先初始化。
+Execute the **common pre-checks** (defined above). If no knowledge base is available, prompt the user to initialize first.
 
-### 步骤
+### Steps
 
-1. 先运行 `bash ${SKILL_DIR}/scripts/source-registry.sh list` 读取来源总表
-2. 获取知识库路径（按上面的 CWD 检查逻辑）
-3. 统计：
-   - 按来源总表中的 `source_label` 和 `raw_dir` 逐项统计 `raw/` 文件数
-   - `wiki/entities/` 下的页面数
-   - `wiki/topics/` 下的页面数
-   - `wiki/sources/` 下的页面数
-   - `wiki/comparisons/` 和 `wiki/synthesis/` 下的页面数
-   - `purpose.md 是否存在`
-4. 读取 `log.md` 最后 5 条记录
-5. 读取 `index.md` 获取主题概览
-6. 运行 `bash ${SKILL_DIR}/scripts/adapter-state.sh summary-human` 获取外挂状态
-7. 运行 `node ${SKILL_DIR}/scripts/source-signal-coverage.js <wiki_root>` 获取来源信号覆盖数据，从返回 JSON 的 `summary` 中读取：
-   - `ok`（已参与）、`missing_sources`（缺少 sources）、`empty_sources`（sources 为空）、`invalid_sources`（格式无效）、`not_applicable`（当前不参与）
-8. **输出报告**（按 `WIKI_LANG` 切换语言）：
+1. First run `bash ${SKILL_DIR}/scripts/source-registry.sh list` to read the source registry
+2. Obtain the knowledge base path (following the CWD check logic above)
+3. Gather statistics:
+   - Count `raw/` files for each source by `source_label` and `raw_dir` from the source registry
+   - Number of pages under `wiki/entities/`
+   - Number of pages under `wiki/topics/`
+   - Number of pages under `wiki/sources/`
+   - Number of pages under `wiki/comparisons/` and `wiki/synthesis/`
+   - Whether `purpose.md` exists
+4. Read the last 5 entries from `log.md`
+5. Read `index.md` for a topic overview
+6. Run `bash ${SKILL_DIR}/scripts/adapter-state.sh summary-human` to get adapter status
+7. Run `node ${SKILL_DIR}/scripts/source-signal-coverage.js <wiki_root>` to get source signal coverage data; read from the returned JSON's `summary`:
+   - `ok` (participating), `missing_sources` (missing sources), `empty_sources` (sources field empty), `invalid_sources` (invalid format), `not_applicable` (currently not participating)
+8. **Output report** (switch language based on `WIKI_LANG`):
 
-   **zh**：
    ```
-   知识库状态：{主题}
+   Knowledge Base Status: {topic}
 
-   素材分布（按来源总表）：
-   - {source_label}：{N}
-   - {source_label}：{N}
+   Source distribution (by source registry):
+   - {source_label}: {N}
+   - {source_label}: {N}
    ...
 
-   Wiki 页面：{总数} 页
-     - 实体页：{N}
-     - 主题页：{N}
-     - 素材摘要：{N}
-     - 对比分析：{N}
-     - 综合分析：{N}
+   Wiki pages: {total} pages
+     - Entity pages: {N}
+     - Topic pages: {N}
+     - Source summaries: {N}
+     - Comparisons: {N}
+     - Syntheses: {N}
 
-   图谱来源信号覆盖：
-   - 已参与：{ok}
-   - 缺少 sources：{missing_sources}
-   - sources 为空：{empty_sources}
-   - 格式无效：{invalid_sources}
-   - 当前不参与：{not_applicable}
+   Graph source signal coverage:
+   - Participating: {ok}
+   - Missing sources: {missing_sources}
+   - Empty sources: {empty_sources}
+   - Invalid format: {invalid_sources}
+   - Not applicable: {not_applicable}
 
-   研究方向：
-   - purpose.md 是否存在：{是/否}
+   Research direction:
+   - purpose.md exists: {yes/no}
 
-   最近活动：
-   - {日期} ingest | {素材标题}
-   - {日期} ingest | {素材标题}
+   Recent activity:
+   - {date} ingest | {source title}
+   - {date} ingest | {source title}
    ...
 
-   外挂状态：
-   {summary-human 原文}
+   Adapter status:
+   {summary-human output}
 
-   建议：
-   - 你可能想深入了解 {某主题}，已有 {N} 篇相关素材
-   - {某实体} 被 {N} 篇素材提到，值得整理成独立页面
+   Suggestions:
+   - You may want to dive deeper into {topic}, with {N} related sources already available
+   - {entity} is mentioned in {N} sources and is worth organizing into a dedicated page
    ```
-   （英文版按「输出语言规则」生成，结构相同。）
 
-   外挂状态直接使用 `bash ${SKILL_DIR}/scripts/adapter-state.sh summary-human` 的输出，不要自己再重写一套来源清单。
+   Adapter status should directly use the output from `bash ${SKILL_DIR}/scripts/adapter-state.sh summary-human`; do not write your own source listing.
 
 ---
 
-## 工作流 7：digest（深度综合报告）
+## Workflow 7: digest (Deep Dive Synthesis Report)
 
-**区别于 query**：query 是快速问答，不生成新页面；digest 是跨素材深度综合，生成持久化报告。
+**Distinction from query**: query is a quick Q&A that does not generate new pages; digest is a cross-source deep synthesis that generates a persisted report.
 
-### 触发关键词
+### Trigger Keywords
 
-- 默认深度报告格式：`"给我讲讲 XX"、"深度分析 XX"、"综述 XX"、"digest XX"、"全面总结一下 XX"`
-- 对比表格式：`"对比一下 X 和 Y"、"比较 X 和 Y"、"X 和 Y 有什么区别"`
-- 时间线格式：`"整理一下时间线"、"按时间排列"、"时间顺序"`
+- Default deep dive report format: `"tell me about XX", "deep analysis of XX", "overview of XX", "digest XX", "comprehensive summary of XX"`
+- Comparison table format: `"compare X and Y", "differences between X and Y"`
+- Timeline format: `"organize a timeline", "chronological order", "time sequence"`
 
-### 前置检查
+### Pre-checks
 
-执行**通用前置检查**（见上方定义）。如果没有可用知识库，提示用户先初始化。
+Execute the **common pre-checks** (defined above). If no knowledge base is available, prompt the user to initialize first.
 
-1. **搜索相关页面**：
-   - 用 Grep 在 `wiki/` 下搜索主题关键词
-   - 列出将要综合的页面（让用户了解报告覆盖范围）
+1. **Search for related pages**:
+   - **Alias expansion**: Same as the query workflow — first read the "alias vocabulary" in `.wiki-schema.md` to expand synonyms (no cross-group propagation, automatic deduplication)
+   - Use Grep to search all keywords (original + alias-expanded) under `wiki/`; multiple words from the same alias group hitting the same page count as one
+   - List the pages that will be synthesized (so the user knows the report's coverage)
 
-2. **深度阅读所有相关页面 + 选择输出格式**：
-   - 读取找到的所有相关 wiki 页面（sources/、entities/、topics/）
-   - 归纳每个页面的核心观点和来源信息
-   - **根据触发关键词决定输出格式**：
-     - 用户说"对比"/"比较"类 → 使用**对比表格式**（见下方模板 B）
-     - 用户说"时间线"/"按时间"类 → 使用**时间线格式**（见下方模板 C）
-     - 其他默认 → 使用**深度报告格式**（见下方模板 A）
+2. **Deep-read all related pages + select output format**:
+   - Read all found related wiki pages (sources/, entities/, topics/)
+   - **Single-page length limit**: If a page exceeds 3000 characters, prioritize reading frontmatter + core insights section + paragraphs directly related to the topic, skipping verbose sections like "notable excerpts from original"
+   - Summarize each page's core insights and source information
+   - **Select output format based on trigger keywords**:
+     - User says "compare"/"differences" → use **comparison table format** (see Template B below)
+     - User says "timeline"/"chronological" → use **timeline format** (see Template C below)
+     - Other defaults → use **deep dive report format** (see Template A below)
 
-3. **生成结构化深度报告**，保存到 `wiki/synthesis/{主题}-{格式}.md`（按 `WIKI_LANG` 切换语言）：
+3. **Generate structured deep dive report**, save to `wiki/synthesis/{topic}-{format}.md` (switch language based on `WIKI_LANG`):
 
-   > 文件名规则：默认格式用 `{主题}-深度报告.md`，对比表用 `{主题}-对比.md`，时间线用 `{主题}-时间线.md`
+   > Filename rules: default format uses `{topic}-deep-dive.md`, comparison table uses `{topic}-comparison.md`, timeline uses `{topic}-timeline.md`
 
-   **模板 A：深度报告格式（默认）**
-
-   **zh**：
-   ```markdown
-   # {主题} 深度报告
-
-   > 综合自 {N} 篇素材 | 生成日期：{日期}
-
-   ## 背景概述
-   （简要说明这个主题的背景和重要性）
-
-   ## 核心观点
-   （按重要性排列，每个观点标注来源）
-   - 观点一（来源：[[素材A]]、[[素材B]]）
-   - 观点二（来源：[[素材C]]）
-
-   ## 不同视角对比
-   （如有多个素材观点不同，在此对比）
-   | 维度 | 来源A的观点 | 来源B的观点 |
-   |------|------------|------------|
-
-   ## 知识脉络
-   （按时间或逻辑顺序梳理该主题的发展）
-
-   ## 尚待解决的问题
-   （现有素材中尚未回答的问题，可作为下次搜集素材的方向）
-
-   ## 相关页面
-   （列出所有综合来源的链接）
-   ```
-   （英文版按「输出语言规则」生成，结构相同。）
-
-   **模板 B：对比表格式**（触发词：对比 / 比较）
+   **Template A: Deep Dive Report Format (Default)**
 
    ```markdown
-   # {对比主题} 对比分析
+   # {Topic} Deep Dive Report
 
-   > 对比 {N} 个对象 | 生成日期：{日期}
+   > Synthesized from {N} sources | Generated: {date}
 
-   ## 对比对象
-   - [[对象 A]]
-   - [[对象 B]]
-   - [[对象 C]]（如有）
+   ## Background Overview
+   (Brief explanation of the topic's background and importance)
 
-   ## 对比表
+   ## Core Insights
+   (Ordered by importance, each insight cites its sources)
+   - Insight one (sources: [[source A]], [[source B]])
+   - Insight two (sources: [[source C]])
 
-   | 维度       | [[对象 A]] | [[对象 B]] | [[对象 C]] |
-   |-----------|-----------|-----------|-----------|
-   | 核心观点   | ...       | ...       | ...       |
-   | 适用场景   | ...       | ...       | ...       |
-   | 优点       | ...       | ...       | ...       |
-   | 缺点 / 限制 | ...       | ...       | ...       |
-   | 来源素材   | [[素材1]] | [[素材2]] | [[素材3]] |
+   ## Contrasting Perspectives
+   (If multiple sources hold different views, compare them here)
+   | Dimension | Source A's View | Source B's View |
+   |-----------|----------------|----------------|
 
-   ## 关键差异
-   （用 1-2 句话说清最重要的差异点）
+   ## Knowledge Trajectory
+   (Trace the development of this topic in chronological or logical order)
 
-   ## 相关页面
+   ## Open Questions
+   (Questions not yet answered by existing sources, which can guide future source collection)
+
+   ## Related Pages
+   (List all synthesized source links)
    ```
 
-   **模板 C：时间线格式**（触发词：时间线 / 按时间）
+   **Template B: Comparison Table Format** (trigger: compare / differences)
 
    ```markdown
-   # {主题} 时间线
+   # {Comparison Topic} Comparison Analysis
 
-   > 时间跨度：{起始年} ~ {结束年} | 生成日期：{日期}
+   > Comparing {N} objects | Generated: {date}
+
+   ## Objects Compared
+   - [[Object A]]
+   - [[Object B]]
+   - [[Object C]] (if applicable)
+
+   ## Comparison Table
+
+   | Dimension       | [[Object A]] | [[Object B]] | [[Object C]] |
+   |----------------|-------------|-------------|-------------|
+   | Core Insight    | ...         | ...         | ...         |
+   | Use Cases       | ...         | ...         | ...         |
+   | Strengths       | ...         | ...         | ...         |
+   | Weaknesses / Limitations | ... | ...       | ...         |
+   | Source Material  | [[source 1]] | [[source 2]] | [[source 3]] |
+
+   ## Key Differences
+   (Summarize the most important differences in 1-2 sentences)
+
+   ## Related Pages
+   ```
+
+   **Template C: Timeline Format** (trigger: timeline / chronological)
+
+   ```markdown
+   # {Topic} Timeline
+
+   > Time span: {start year} ~ {end year} | Generated: {date}
 
    ```mermaid
    gantt
-     title {主题} 时间线
+     title {Topic} Timeline
      dateFormat YYYY-MM-DD
-     section 主要事件
-       事件 A : 2023-01-01, 1d
-       事件 B : 2024-03-15, 1d
-       事件 C : 2025-06-20, 1d
+     section Major Events
+       Event A : 2023-01-01, 1d
+       Event B : 2024-03-15, 1d
+       Event C : 2025-06-20, 1d
    ```
 
-   ## 事件说明
-   - **2023-01-01 — 事件 A**：简要说明（来源：[[素材A]]）
-   - **2024-03-15 — 事件 B**：简要说明（来源：[[素材B]]）
-   - **2025-06-20 — 事件 C**：简要说明（来源：[[素材C]]）
+   ## Event Details
+   - **2023-01-01 — Event A**: Brief description (source: [[source A]])
+   - **2024-03-15 — Event B**: Brief description (source: [[source B]])
+   - **2025-06-20 — Event C**: Brief description (source: [[source C]])
 
-   ## 相关页面
+   ## Related Pages
    ```
 
-   > **时间线格式注意事项**：
-   > - `gantt` 要求 `YYYY-MM-DD` 精度
-   > - 如果素材只有年份（如 "2023 年"），把日期补为该年第一天（`2023-01-01`）
-   > - 如果连年份都不确定，改用**纯文字时间线**（无序列表按时间排序），不用 Mermaid gantt
-   > - 如果事件超过 15 个，建议按 section 分组，避免图太长
+   > **Timeline format notes**:
+   > - `gantt` requires `YYYY-MM-DD` precision
+   > - If the source only has a year (e.g., "2023"), fill in the first day of that year (`2023-01-01`)
+   > - If even the year is uncertain, use a **plain text timeline** (unordered list sorted by time) instead of Mermaid gantt
+   > - If there are more than 15 events, consider grouping by section to avoid an overly long chart
 
-4. **更新 index.md 和 log.md**：
-   - index.md 的"综合分析"分类下添加新报告条目
-   - log.md 追加：`## {日期} digest | {主题}`
+4. **Update index.md and log.md**:
+   - Add a new report entry under the "Synthesis" category in index.md
+   - Append to log.md: `## {date} digest | {topic}`
 
-5. **向用户展示结果**（按 `WIKI_LANG` 切换语言）：
+5. **Display results to the user** (switch language based on `WIKI_LANG`):
 
-   **zh**：
    ```
-   已生成深度报告：{主题}
+   Deep dive report generated: {topic}
 
-   综合了 {N} 篇素材：
-   - [[素材1]]、[[素材2]]...
+   Synthesized {N} sources:
+   - [[source 1]], [[source 2]]...
 
-   报告已保存：wiki/synthesis/{主题}-深度报告.md
+   Report saved: wiki/synthesis/{topic}-deep-dive.md
 
-   发现这些待解决问题，可以继续搜集素材：
-   - {问题1}
-   - {问题2}
+   Open questions found — consider collecting more sources on:
+   - {question 1}
+   - {question 2}
    ```
-   （英文版按「输出语言规则」生成，结构相同。）
 
 ---
 
-## 工作流 8：graph（知识图谱 · Mermaid + 交互式 HTML）
+## Workflow 8: graph (Knowledge Graph - Mermaid + Interactive HTML)
 
-### 触发关键词
+### Trigger Keywords
 
-"画个知识图谱"、"看看关联图"、"graph"、"知识库地图"、"展示知识关联"
+"draw a knowledge graph", "show connections", "graph", "knowledge base map", "show knowledge connections"
 
-### 前置检查
+### Pre-checks
 
-执行**通用前置检查**（见上方定义）。如果没有可用知识库，提示用户先初始化。
+Execute the **common pre-checks** (defined above). If no knowledge base is available, prompt the user to initialize first.
 
-1. **扫描双向链接**：
-   - 遍历 `wiki/` 下所有 `.md` 文件
-   - 提取每个文件中的 `[[链接]]` 语法，建立关系列表：`页面A → 页面B`
+1. **Scan bidirectional links**:
+   - Traverse all `.md` files under `wiki/`
+   - Extract `[[link]]` syntax from each file to build a relationship list: `page A → page B`
 
-2. **生成 Mermaid 图表文件** `wiki/knowledge-graph.md`：
+2. **Generate Mermaid chart file** `wiki/knowledge-graph.md`:
    ````markdown
-   # 知识图谱
+   # Knowledge Graph
 
-   > 自动生成 | {日期} | 共 {N} 个节点，{M} 条关联
+   > Auto-generated | {date} | {N} nodes, {M} connections
 
    ```mermaid
    graph LR
-     A[概念1] --> B[概念2]
-     A --> C[素材1]
-     D[主题1] --> A
-     D --> E[概念3]
+     A[Concept 1] --> B[Concept 2]
+     A --> C[Source 1]
+     D[Topic 1] --> A
+     D --> E[Concept 3]
    ```
 
-   查看方式：用 Typora、VS Code（Markdown Preview Enhanced）、或直接在 GitHub 上查看。
+   Viewing options: Use Typora, VS Code (Markdown Preview Enhanced), or view directly on GitHub.
    ````
 
-   **生成规则**：
-   - 节点名用中括号 `[名称]`，名称太长则截断到 10 字
-   - 只展示有双向链接关系的节点（孤立节点不纳入图谱）
-   - 如果关系超过 50 条，只保留被引用次数最多的 30 个节点，避免图谱过于密集
-   - **默认全部使用 `A --> B` 无标注箭头**，不自动判断关系类型
+   **Generation rules**:
+   - Node names use brackets `[name]`; truncate names longer than 10 characters
+   - Only display nodes that have bidirectional link relationships (orphaned nodes are excluded from the graph)
+   - If relationships exceed 50, keep only the 30 most-referenced nodes to avoid excessive density
+   - **Default to unlabeled arrows `A --> B` for all connections**; do not automatically determine relationship types
 
-   **可选：手动美化图谱**（生成后由用户自己做，AI 不自动处理）：
+   **Optional: Manual graph beautification** (done by the user after generation; AI does not handle this automatically):
 
-   生成的 `wiki/knowledge-graph.md` 默认只有 `-->` 箭头。如果用户希望图谱更清楚地
-   表达关系类型，可以：
+   The generated `wiki/knowledge-graph.md` defaults to `-->` arrows only. If the user wants the graph to express relationship types more clearly, they can:
 
-   1. 用编辑器打开 `wiki/knowledge-graph.md`
-   2. 参考 `.wiki-schema.md` 里的"关系类型词汇表"（实现 / 依赖 / 对比 / 矛盾 / 衍生）
-   3. 把最重要的 3-5 条箭头改写成 `A -->|实现| B` 之类的带标注写法
-   4. 保存后用 Obsidian / VS Code / Typora 重新渲染
+   1. Open `wiki/knowledge-graph.md` in an editor
+   2. Refer to the "relationship type vocabulary" in `.wiki-schema.md` (implements / depends on / compares / contradicts / derives from)
+   3. Rewrite the 3-5 most important arrows as `A -->|implements| B` style labeled notation
+   4. Save and re-render with Obsidian / VS Code / Typora
 
-   AI 在 graph 工作流里**不自动打标**——因为自动判断关系类型需要额外阅读整段上下文，
-   成本高且准确率难保证。人类对"哪些关系最值得打标"的判断更可靠。
-   用户如果明确要求 AI 给某几条边打标，可以单独说"把 A 和 B 之间的关系标成'实现'"，
-   AI 再手动修改 `wiki/knowledge-graph.md` 对应的那一行。
+   AI does **not auto-label** in the graph workflow — because automatically determining relationship types requires reading extensive context, which is costly and hard to ensure accuracy. Humans are more reliable at judging "which relationships are most worth labeling."
+   If the user explicitly asks AI to label specific edges, they can say "label the relationship between A and B as 'implements'", and AI will manually modify the corresponding line in `wiki/knowledge-graph.md`.
 
-2b. **生成交互式图谱数据**（`wiki/graph-data.json`）：
+2b. **Generate interactive graph data** (`wiki/graph-data.json`):
 
    ```bash
    bash scripts/build-graph-data.sh "$WIKI_ROOT"
    ```
 
-   脚本会扫描 `wiki/{entities,topics,sources,comparisons,synthesis,queries}/*.md`，
-   解析同行 `[[双向链接]]` 与 `<!-- confidence: EXTRACTED|INFERRED|AMBIGUOUS -->` 注释，
-   调用本地 Node helper 计算 3 信号边权重（共引强度 / 来源重叠 / 类型亲和度）、Louvain 社区和规则 insights，
-   并写入 `wiki/graph-data.json`（内容 >2MB 自动降级，单节点只留 500 行；图规模超预算时 insights 自动降级）。
-   依赖 `jq` + `node`（如缺失可运行 `brew install jq node`）。
+   The script scans `wiki/{entities,topics,sources,comparisons,synthesis,queries}/*.md`,
+   parses inline `[[bidirectional links]]` and `<!-- confidence: EXTRACTED|INFERRED|AMBIGUOUS -->` comments,
+   calls a local Node helper to compute 3-signal edge weights (co-citation strength / source overlap / type affinity), Louvain communities, and rule-based insights,
+   and writes to `wiki/graph-data.json` (auto-downgrades when content >2MB, keeping only 500 lines per node; insights auto-downgrade when graph scale exceeds budget).
+   Requires `jq` + `node` (install with `brew install jq node` if missing).
 
-2c. **图谱运行时说明**：
-   - 图谱基础构建现在依赖 `jq` + `node`
-   - 不需要额外 `npm install`
-   - `node` 只用于运行随仓库分发的本地预构建 helper
+2c. **Graph runtime notes**:
+   - Graph construction now depends on `jq` + `node`
+   - No additional `npm install` required
+   - `node` is only used to run the local pre-built helper distributed with the repository
 
-2d. **生成交互式图谱 HTML**（wash 水彩卡片风）：
+2d. **Generate interactive graph HTML** (wash watercolor card style):
 
    ```bash
    bash scripts/build-graph-html.sh "$WIKI_ROOT"
    ```
 
-   生成 `wiki/knowledge-graph.html`。脚本把 `graph-data.json`（已做 `</script>` 转义）
-   内嵌进 `<script id="graph-data" type="application/json">`，使用本地 `d3` + `roughjs` +
-   `marked` + `purify`，离线双击即可打开。包含搜索框、关系类型筛选、边权重可视化、
-   邻居强度指示、Insights 面板、节点抽屉和社区聚类等交互功能。
+   Generates `wiki/knowledge-graph.html`. The script embeds `graph-data.json` (with `</script>` escaped)
+   into `<script id="graph-data" type="application/json">`, using local `d3` + `roughjs` +
+   `marked` + `purify` for offline double-click viewing. Includes search box, relationship type filtering, edge weight visualization,
+   neighbor strength indicators, Insights panel, node drawer, and community clustering interactive features.
 
-3. **读取 insights 并向用户展示结果**（按 `WIKI_LANG` 切换语言）：
+3. **Read insights and display results to the user** (switch language based on `WIKI_LANG`):
 
-   先读取 insights：
+   First read insights:
    ```bash
    jq '.insights' "$WIKI_ROOT/wiki/graph-data.json"
    ```
 
-   **zh**：
    ```
-   知识图谱已生成！
+   Knowledge graph generated!
 
-   共 {N} 个节点，{M} 条关联
+   {N} nodes, {M} connections
 
-   图谱洞察：
-   - 惊人连接：{from} ↔ {to}（跨社区，权重 {weight}）{如有}
-   - 桥节点：{node}（连接 {count} 个社区）{如有}
-   - 知识缺口：{node}（度数 {degree}，建议补充素材）{如有}
-   - 稀疏社区：{community}（密度 {density}）{如有}
+   Graph insights:
+   - Surprising connection: {from} ↔ {to} (cross-community, weight {weight}) {if any}
+   - Bridge node: {node} (connects {count} communities) {if any}
+   - Knowledge gap: {node} (degree {degree}, consider adding sources) {if any}
+   - Sparse community: {community} (density {density}) {if any}
 
-   查看方式：
-   - 交互式（推荐）：双击 wiki/knowledge-graph.html
-     （建议 Chrome / Firefox；Safari 若提示"已阻止脚本"，
-      可在 wiki/ 下跑 `python3 -m http.server 8000` 再访问）
-   - Mermaid 静态图：wiki/knowledge-graph.md
-     （Obsidian / VS Code Markdown Preview Enhanced / GitHub / Typora 均可渲染）
+   Viewing options:
+   - Interactive (recommended): double-click wiki/knowledge-graph.html
+     (Chrome / Firefox recommended; if Safari shows "blocked script",
+      run `python3 -m http.server 8000` in wiki/ and access from there)
+   - Mermaid static chart: wiki/knowledge-graph.md
+     (renderable in Obsidian / VS Code Markdown Preview Enhanced / GitHub / Typora)
 
-   孤立页面（未纳入图谱）：
-   - [[某页面]]（建议添加到相关实体页或主题页）
+   Orphaned pages (not included in graph):
+   - [[some page]] (suggest adding to a related entity or topic page)
    ```
 
-   （英文版按「输出语言规则」生成，结构相同。各洞察类别为空时省略该行。）
+   (Omit any insight category line when that category is empty.)
 
 ---
 
-## 工作流 9：delete（删除素材）
+## Workflow 9: delete (Delete Source)
 
-### 触发关键词
+### Trigger Keywords
 
-"删除素材"、"remove"、"delete source"、"移除"
+"delete source", "remove", "delete source", "remove"
 
-### 前置检查
+### Pre-checks
 
-执行**通用前置检查**（见上方定义）。如果没有可用知识库，提示用户先初始化。
+Execute the **common pre-checks** (defined above). If no knowledge base is available, prompt the user to initialize first.
 
-### 步骤
+### Steps
 
-1. **识别目标素材**：
-   - 在 `raw/` 下搜索用户提到的素材名
-   - 如果匹配到多个候选，先列出候选文件让用户确认
+1. **Identify target source**:
+   - Search for the source name mentioned by the user under `raw/`
+   - If multiple candidates match, list the candidate files for the user to confirm
 
-2. **扫描影响范围**：
-   - 先运行：
+2. **Scan impact scope**:
+   - First run:
      ```bash
-     bash ${SKILL_DIR}/scripts/delete-helper.sh scan-refs "<wiki 根目录>" "<素材文件名>"
+     bash ${SKILL_DIR}/scripts/delete-helper.sh scan-refs "<wiki root>" "<source filename>"
      ```
-   - 用脚本返回的页面列表作为引用扫描结果
-   - 逐页判断是“删除整页”还是“保留页面但移除该素材引用”
+   - Use the script's returned page list as the reference scan result
+   - For each page, determine whether to "delete the entire page" or "keep the page but remove that source's references"
 
-3. **安全确认**：
-   - 如果影响超过 5 个页面时，先把受影响页面完整列给用户，再做二次确认
-   - 如果某个实体或主题只被这个素材引用，提示用户是否连同页面一起删除
+3. **Safety confirmation**:
+   - If more than 5 pages are affected, first display the complete list of affected pages to the user, then request a second confirmation
+   - If an entity or topic is referenced by only this source, ask the user whether to delete that page as well
 
-4. **执行级联清理**：
-   - 删除 `raw/` 下对应原始文件
-   - 删除 `wiki/sources/` 下对应素材摘要页
-   - 对 `wiki/entities/`、`wiki/topics/`、`wiki/comparisons/`、`wiki/synthesis/` 中仍需保留的页面，只移除该素材相关的引用段落
-   - 更新 `index.md`
-   - 在 `log.md` 追加删除记录
-   - 标记 `wiki/overview.md` 需要重新生成
+4. **Execute cascading cleanup**:
+   - Delete the corresponding raw file under `raw/`
+   - Delete the corresponding source summary page under `wiki/sources/`
+   - For pages under `wiki/entities/`, `wiki/topics/`, `wiki/comparisons/`, `wiki/synthesis/` that should be retained, only remove paragraphs referencing that source
+   - Update `index.md`
+   - Append a deletion record to `log.md`
+   - Mark `wiki/overview.md` as needing regeneration
 
-5. **清理缓存**：
-   - 删除完成后，对对应 raw 文件运行：
+5. **Clean cache**:
+   - After deletion is complete, run for the corresponding raw file:
      ```bash
-     bash ${SKILL_DIR}/scripts/cache.sh invalidate "<raw 文件路径>"
+     bash ${SKILL_DIR}/scripts/cache.sh invalidate "<raw file path>"
      ```
 
-6. **断链检查**：
-   - 用 grep 或 `delete-helper.sh` 再扫一遍指向已删除页面的链接
-   - 清理明确可判定的断链；如果归属不清，保留原文并提示用户后续人工确认
+6. **Broken link check**:
+   - Use grep or `delete-helper.sh` to scan again for links pointing to deleted pages
+   - Clean up clearly determinable broken links; if attribution is unclear, preserve the original text and prompt the user for later manual confirmation
 
-7. **向用户报告结果**：
+7. **Report results to the user**:
 
-   **zh**：
    ```
-   已删除：
+   Deleted:
      - raw/articles/2024-01-15-ai-article.md
      - wiki/sources/2024-01-15-ai-article.md
-   已更新（移除引用）：
+   Updated (references removed):
      - wiki/entities/AI-Agent.md
-     - wiki/topics/大语言模型.md
-   需要重新生成：
+     - wiki/topics/large-language-models.md
+   Needs regeneration:
      - wiki/overview.md
    ```
-   （英文版按「输出语言规则」生成，结构相同。）
 
 ---
 
-## 工作流 10：crystallize（结晶化）
+## Workflow 10: crystallize (Crystallize)
 
-**触发条件**：
-用户说"结晶化"、"crystallize"、"把这个记进知识库"、"这段对话很有价值"
+**Trigger conditions**:
+User says "crystallize", "crystallize", "save this to the knowledge base", "this conversation is valuable"
 
-**输入**：
-用户主动提供的内容（文字粘贴进对话，或明确引用某段上下文）。
-用户必须主动提供内容，Claude 不自动提取当前会话。
+**Input**:
+Content actively provided by the user (text pasted into the conversation, or explicitly referencing a specific context).
+The user must actively provide the content; Claude does not automatically extract from the current session.
 
-**处理步骤（MVP）**：
+**Processing steps (MVP)**:
 
-1. 用户提供内容（文字粘贴进对话）
-2. Claude 从内容中提取：
-   - 核心洞见（3-5 条）
-   - 关键决策和原因
-   - 值得记录的结论
-3. 生成 `wiki/synthesis/sessions/{主题}-{日期}.md`，格式参考 `templates/synthesis-template.md`
-   - 本轮不要求 crystallize 页面补 `sources`，默认不参与 graph source overlap
-4. 更新 `log.md`（记录本次结晶化操作）
+1. User provides content (text pasted into conversation)
+2. Claude extracts from the content:
+   - Core insights (3-5 items)
+   - Key decisions and rationale
+   - Conclusions worth recording
+3. Generate `wiki/synthesis/sessions/{topic}-{date}.md`, following the format in `templates/synthesis-template.md`
+   - This round does not require crystallize pages to include `sources`; by default they do not participate in graph source overlap
+4. Update `log.md` (record this crystallization operation)
 
-> MVP 版本不自动创建 entity 页面，不自动更新 index.md。
+> MVP version does not automatically create entity pages or update index.md.
 
-**confidence 规则**：
-结晶化来源的内容默认标记为 `INFERRED`（来自推断/对话，非原始文档）。
+**Confidence rules**:
+Content from crystallization sources is by default marked as `INFERRED` (from inference/conversation, not from original documents).
 
-**输出示例**：
-已创建 wiki/synthesis/sessions/AI-agent-设计决策-20260413.md
-已更新 log.md
+**Output example**:
+Created wiki/synthesis/sessions/AI-agent-design-decisions-20260413.md
+Updated log.md

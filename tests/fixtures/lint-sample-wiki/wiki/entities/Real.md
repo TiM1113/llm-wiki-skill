@@ -1,7 +1,7 @@
 # Real
 
-这是一个被其他页面引用的实体页。
+This is an entity page referenced by other pages.
 
-## 相关页面
+## Related Pages
 
 - [[Other]]

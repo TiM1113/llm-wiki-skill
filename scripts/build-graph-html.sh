@@ -1,30 +1,30 @@
 #!/bin/bash
-# build-graph-html.sh — 拼接交互式知识图谱 HTML（wash 水彩卡片风）
+# build-graph-html.sh — assemble interactive knowledge graph HTML (wash watercolor card style)
 #
-# 用法：
+# Usage:
 #   bash scripts/build-graph-html.sh <wiki_root>
 #
-# 前置：需要先运行 build-graph-data.sh 生成 wiki/graph-data.json
+# Prerequisite: run build-graph-data.sh first to generate wiki/graph-data.json
 #
-# 行为：
-#   1. 读取 wash 模板 header/footer
-#   2. 替换品牌栏占位符（__WIKI_TITLE__ / __NODE_COUNT__ / __EDGE_COUNT__ / __BUILD_DATE__）
-#   3. 把 wiki/graph-data.json 内嵌到 <script id="graph-data"> 块内部
-#      （事先做 </script> → <\/script> 转义，防 JSON 字符串里含 </script>
-#        提前关闭标签 — JSON-in-HTML 标准做法）
-#   4. 追加 footer
-#   5. 复制 wash 运行所需 vendor 资产到 HTML 同级目录
+# Behavior:
+#   1. Read wash template header/footer
+#   2. Replace brand bar placeholders (__WIKI_TITLE__ / __NODE_COUNT__ / __EDGE_COUNT__ / __BUILD_DATE__)
+#   3. Embed wiki/graph-data.json into <script id="graph-data"> block
+#      (pre-escape </script> to <\/script> to prevent JSON strings containing </script>
+#       from prematurely closing the tag — standard JSON-in-HTML practice)
+#   4. Append footer
+#   5. Copy vendor assets required by wash to the HTML output directory
 #
-# 退出码：0 成功；1 依赖/文件缺失/参数错误
+# Exit code: 0 success; 1 dependency/file missing/argument error
 
 set -eu
 
 print_usage() {
   cat <<'EOF'
-用法：
+Usage:
   bash scripts/build-graph-html.sh <wiki_root>
 
-示例：
+Example:
   bash scripts/build-graph-html.sh /path/to/wiki-root
 EOF
 }
@@ -36,10 +36,10 @@ die() {
 
 ensure_file() {
   local file="$1"
-  local label="${2:-文件}"
+  local label="${2:-file}"
   [ -f "$file" ] || {
-    echo "ERROR: 找不到${label} $file" >&2
-    echo "       重装 skill 可修复（bash install.sh --platform claude）" >&2
+    echo "ERROR: ${label} not found: $file" >&2
+    echo "       Reinstalling the skill can fix this (bash install.sh --platform claude)" >&2
     exit 1
   }
 }
@@ -55,7 +55,7 @@ while [ "$#" -gt 0 ]; do
       break
       ;;
     -*)
-      die "未知选项: $1"
+      die "Unknown option: $1"
       ;;
     *)
       break
@@ -71,7 +71,7 @@ done
 WIKI_ROOT="$1"
 
 command -v jq >/dev/null 2>&1 || {
-  echo "ERROR: jq 未安装。运行 brew install jq" >&2
+  echo "ERROR: jq is not installed. Run: brew install jq" >&2
   exit 1
 }
 
@@ -81,8 +81,8 @@ DEPS_DIR="$SKILL_DIR/deps"
 DATA="$WIKI_ROOT/wiki/graph-data.json"
 
 [ -f "$DATA" ] || {
-  echo "ERROR: 未找到 $DATA" >&2
-  echo "       请先运行 build-graph-data.sh 生成图谱数据" >&2
+  echo "ERROR: $DATA not found" >&2
+  echo "       Please run build-graph-data.sh first to generate graph data" >&2
   exit 1
 }
 
@@ -90,15 +90,15 @@ HEADER="$TEMPLATES_DIR/graph-styles/wash/header.html"
 FOOTER="$TEMPLATES_DIR/graph-styles/wash/footer.html"
 OUTPUT="$WIKI_ROOT/wiki/knowledge-graph.html"
 
-ensure_file "$HEADER" "模板"
-ensure_file "$FOOTER" "模板"
+ensure_file "$HEADER" "template"
+ensure_file "$FOOTER" "template"
 
-WIKI_TITLE=$(jq -r '.meta.wiki_title // "知识库"' "$DATA")
+WIKI_TITLE=$(jq -r '.meta.wiki_title // "Wiki"' "$DATA")
 NODE_COUNT=$(jq -r '.meta.total_nodes // 0' "$DATA")
 EDGE_COUNT=$(jq -r '.meta.total_edges // 0' "$DATA")
 BUILD_DATE=$(jq -r '.meta.build_date // ""' "$DATA")
 BUILD_DATE_SHORT="${BUILD_DATE:0:10}"
-[ -n "$BUILD_DATE_SHORT" ] || BUILD_DATE_SHORT="未知"
+[ -n "$BUILD_DATE_SHORT" ] || BUILD_DATE_SHORT="Unknown"
 
 ASSET_SPECS=(
   "$DEPS_DIR/d3.min.js|d3.min.js"
@@ -119,7 +119,7 @@ output_tmp="$OUTPUT.partial"
 output_next="$OUTPUT.next"
 rm -f "$output_tmp" "$output_next"
 
-# 替换占位符
+# Replace placeholders
 WIKI_TITLE_VAL="$WIKI_TITLE" \
 NODE_COUNT_VAL="$NODE_COUNT" \
 EDGE_COUNT_VAL="$EDGE_COUNT" \
@@ -131,12 +131,12 @@ perl -pe '
   s/__BUILD_DATE__/$ENV{BUILD_DATE_VAL}/g;
 ' "$HEADER" > "$output_tmp"
 
-# 内嵌 graph-data.json，转义 </script>
+# Embed graph-data.json, escaping </script>
 perl -pe 's|</script>|<\\/script>|gi' "$DATA" >> "$output_tmp"
 
 cat "$FOOTER" >> "$output_tmp"
 
-# 先复制 vendor 资产，全部成功后再替换 HTML
+# Copy vendor assets first, replace HTML only after all succeed
 for spec in "${ASSET_SPECS[@]}"; do
   src="${spec%%|*}"
   name="${spec#*|}"
@@ -150,14 +150,14 @@ mv "$output_next" "$OUTPUT"
 output_size=$(wc -c < "$OUTPUT" | tr -d ' ')
 output_kb=$((output_size / 1024))
 
-echo "交互式图谱已生成："
+echo "Interactive graph generated:"
 echo "  - $OUTPUT (${output_kb} KB)"
-echo "  节点 $NODE_COUNT · 关联 $EDGE_COUNT"
+echo "  Nodes: $NODE_COUNT | Edges: $EDGE_COUNT"
 echo ""
-echo "查看方式："
-echo "  1. 双击 $OUTPUT"
-echo "     （建议 Chrome / Firefox；Safari 可能因 file:// 策略拒绝本地脚本）"
-echo "  2. 如浏览器拒绝本地脚本，在 $output_dir 下跑："
+echo "How to view:"
+echo "  1. Double-click $OUTPUT"
+echo "     (Chrome / Firefox recommended; Safari may block local scripts due to file:// policy)"
+echo "  2. If the browser blocks local scripts, run in $output_dir:"
 echo "       python3 -m http.server 8000"
-echo "     再访问："
+echo "     Then visit:"
 echo "       http://localhost:8000/$(basename "$OUTPUT")"

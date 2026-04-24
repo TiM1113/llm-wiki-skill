@@ -1,14 +1,14 @@
-# 测试知识库 Index
+# Test Wiki Index
 
-本文件是 lint-runner.sh 的测试夹具，故意包含若干已知问题用于验证脚本。
+This file is a test fixture for lint-runner.sh, intentionally containing several known issues for script verification.
 
-## 实体页
+## Entity Pages
 
 - [[Real]]
 - [[C++]]
 - [[Other]]
 - [[Ghost]]
 
-## 主题页
+## Topic Pages
 
 - [[AIbasic]]

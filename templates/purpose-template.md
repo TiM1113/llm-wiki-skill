@@ -1,16 +1,16 @@
-# 研究目的与方向
+# Research Purpose and Direction
 
-## 核心目标
-<!-- 这个知识库要解决什么问题？帮助谁？ -->
-[待填写]
+## Core Goal
+<!-- What problem should this wiki solve, and who does it help? -->
+[To fill]
 
-## 关键问题
-<!-- 你最想知道答案的 3-5 个问题 -->
-1. [待填写]
-2. [待填写]
-3. [待填写]
+## Key Questions
+<!-- The 3-5 questions you most want this wiki to answer -->
+1. [To fill]
+2. [To fill]
+3. [To fill]
 
-## 研究范围
-<!-- 涵盖哪些领域/主题？不涵盖什么？ -->
-**涵盖：** [待填写]
-**不涵盖：** [待填写]
+## Research Scope
+<!-- What should be covered here, and what stays out of scope? -->
+**Include:** [To fill]
+**Exclude:** [To fill]

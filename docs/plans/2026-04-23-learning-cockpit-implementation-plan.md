@@ -11,160 +11,160 @@ deepened: 2026-04-23
 
 ## Overview
 
-这次改动的目标，不是给现有图谱页再补一个左栏，而是把首页第一分钟的叙事从“看图”改成“开始学”。
+The goal of this change is not to add another left column to the existing graph page, but to change the first-minute narrative of the home page from "viewing the graph" to "start learning".
 
-现有 wash 页面已经有稳定的图谱渲染、搜索、过滤、Insights、小地图和右侧抽屉，但默认打开时仍然更像一个“看图器”：
+The existing wash page already has stable graph rendering, search, filtering, Insights, minimap, and the right-side drawer, but by default it still looks more like a "graph viewer":
 
-- 不会主动告诉用户该从哪里开始
-- 不能稳定解释“为什么先看这个”
-- 默认状态仍然把全局图和既有工具能力摆在首页叙事中心
+- Does not proactively tell the user where to start
+- Cannot reliably explain "why look at this first"
+- Default state still puts the global graph and existing tool capabilities at the center of the home narrative
 
-本轮的目标，是在保留“中间图谱 + 右侧抽屉”主结构的前提下，把它升级成一个**学习驾驶舱**：
+The goal of this round, while preserving the main structure of "center graph + right-side drawer", is to upgrade it into a **learning cockpit**:
 
-- 首页先给推荐起点和当前最重社区
-- 中间默认显示局部学习子图，而不是完整大图
-- 右侧抽屉先回答“这是什么 / 为什么现在看 / 下一步看什么”
+- Home page first shows the recommended starting point and the currently most important community
+- The center shows a local learning subgraph by default, rather than the full large graph
+- The right-side drawer first answers "what this is / why look at it now / what to look at next"
 
 ## Problem Frame
 
-现有实现已经解决了“图谱能生成、能看、能搜、能展开”的问题，但还没有解决“用户第一次打开时不迷路”的问题。
+The existing implementation already solves "the graph can be generated, viewed, searched, and expanded", but has not yet solved "user doesn't get lost on first open".
 
-从现有骨架看：
+Looking at the existing skeleton:
 
-- `templates/graph-styles/wash/header.html` 已有稳定的 `.app` 两列布局和成熟的右侧 drawer
-- `templates/graph-styles/wash/graph-wash.js` 已经有完整的节点选中、高亮、drawer 打开、search、filters、Insights、小地图与 Tweaks
-- `scripts/build-graph-data.sh` + `scripts/graph-analysis.js` 已经能预计算社区、边权与洞察
+- `templates/graph-styles/wash/header.html` already has a stable `.app` two-column layout and a mature right-side drawer
+- `templates/graph-styles/wash/graph-wash.js` already has complete node selection, highlighting, drawer opening, search, filters, Insights, minimap, and Tweaks
+- `scripts/build-graph-data.sh` + `scripts/graph-analysis.js` already precompute communities, edge weights, and insights
 
-所以这轮真正缺的，不是新的渲染引擎，而是一个明确的**默认进入协议**：
+So what's really missing this round is not a new rendering engine but a clear **default entry protocol**:
 
-1. 用户打开页面后应该先看到什么
-2. 默认聚焦哪个社区、哪个节点、哪种视图
-3. 右侧抽屉怎么把节点点击翻译成学习动作
-4. 图规模、社区质量或路径生成不足时怎么降级
+1. What the user should see first after opening the page
+2. Which community, node, and view to focus on by default
+3. How the right-side drawer translates node clicks into learning actions
+4. How to degrade when graph scale, community quality, or path generation is insufficient
 
 ## Requirements Trace
 
-- R1. 首屏默认进入学习入口，不再直接把完整图谱作为默认叙事。
-- R2. V1 必须支持 `path / community / global` 三种显式模式切换。
-- R3. 默认推荐起点、当前最重社区和降级规则必须走预计算，而不是前端现算。
-- R4. 右侧抽屉必须稳定展示“这是什么 / 为什么现在看 / 下一步看什么”这三个学习区块。
-- R5. 这轮不能把现有 wash 图谱拆成第二套系统；所有学习入口都要复用既有 graph runtime 主链路。
-- R6. 现有 graph-data、HTML shell 与 JS bootstrap 回归必须继续稳定，不能让首页叙事改造把已有功能回归打碎。
+- R1. Default first-screen enters the learning entry, no longer using the full graph directly as the default narrative.
+- R2. V1 must support explicit mode switching between `path / community / global`.
+- R3. Default recommended starting point, current most important community, and degradation rules must go through precomputation, not front-end on-the-fly computation.
+- R4. The right-side drawer must reliably display the three learning sections "what this is / why look now / what's next".
+- R5. This round cannot split the existing wash graph into a second system; all learning entries must reuse the existing graph runtime main pipeline.
+- R6. Existing graph-data, HTML shell, and JS bootstrap regressions must continue to be stable; the home narrative redesign cannot break existing functional regressions.
 
 ## Scope Boundaries
 
-- 不重写 graph renderer，不替换 d3/rough/marked/purify 现有技术栈。
-- 不把页面改成新的三栏主布局；保留 `.app` 两列结构。
-- 不在前端重新计算社区、路径或学习推荐规则。
-- 不引入 reducer 或新的状态管理框架，第一版先用显式状态。
-- 不把分享 / 导出 / 截图传播能力绑进同一轮。
-- 不做实时 LLM 解释生成；学习解释先用规则和模板。
-- 不在这一轮处理搜索升级、深色模式、真正响应式重排等后续增强项。
+- Do not rewrite the graph renderer; do not replace the existing d3/rough/marked/purify tech stack.
+- Do not change the page to a new three-column main layout; preserve the `.app` two-column structure.
+- Do not recompute communities, paths, or learning recommendation rules on the front end.
+- Do not introduce a reducer or new state management framework; first version uses explicit state.
+- Do not bundle share / export / screenshot propagation capabilities into the same round.
+- Do not do real-time LLM explanation generation; learning explanations use rules and templates first.
+- Do not handle follow-up enhancements like search upgrade, dark mode, true responsive reflow in this round.
 
 ## Context & Research
 
 ### Relevant code and patterns
 
 - `templates/graph-styles/wash/header.html`
-  - `:132-149` 顶层 `.app` 现在是主区 + drawer 两列 grid
-  - `:1210-1254` `tools` 区已有 search / filters / fit / refit / tweaks
-  - `:1256-1299` `canvas-wrap` 内已有 Insights、小地图、图例、toast、loading 等浮层宿主
-  - `:1312-1334` 右侧 drawer DOM 骨架已经成熟
+  - `:132-149` top-level `.app` is currently a two-column grid of main area + drawer
+  - `:1210-1254` `tools` area already has search / filters / fit / refit / tweaks
+  - `:1256-1299` `canvas-wrap` already hosts overlays like Insights, minimap, legend, toast, loading
+  - `:1312-1334` right-side drawer DOM skeleton is mature
 
 - `templates/graph-styles/wash/graph-wash.js`
-  - `:31-52` 当前 state 只有 graph/runtime 基础状态，没有学习模式状态
-  - `:895-1000` `selectNode()` / `openDetailDrawer()` 是现有“选中节点 + 打开抽屉”的主链路
-  - `:1025-1030` `focusNode()` 已经把“选中 + 打开 + 居中”收敛成统一入口
-  - `:1032-1116` `renderInsights()` 适合作为学习入口 panel 的宿主
-  - `:1430-1442` boot 流程稳定，但当前默认不会自动选中学习入口
+  - `:31-52` current state only has graph/runtime base state, no learning mode state
+  - `:895-1000` `selectNode()` / `openDetailDrawer()` is the existing "select node + open drawer" main pipeline
+  - `:1025-1030` `focusNode()` already unifies "select + open + center" into one entry point
+  - `:1032-1116` `renderInsights()` is suitable as the host for the learning entry panel
+  - `:1430-1442` boot flow is stable, but currently doesn't auto-select the learning entry by default
 
 - `scripts/build-graph-data.sh`
-  - `:304-328` 目前输出 `meta / nodes / edges / insights`
-  - `:274-295` 已有 `meta.initial_view`，可作为简化全局视图底座
+  - `:304-328` currently outputs `meta / nodes / edges / insights`
+  - `:274-295` already has `meta.initial_view`, which can serve as a simplified global view base
 
 - `scripts/graph-analysis.js`
-  - `:103-149` 已有边权计算
-  - `:282-359` 已有 Louvain 社区划分与标签选择
-  - `:361-495` 已有基础洞察生成
-  - `:497-547` `analyzeGraph()` 是新增 `learning` 预计算的合适入口
+  - `:103-149` already has edge weight calculation
+  - `:282-359` already has Louvain community partitioning and label selection
+  - `:361-495` already has basic insight generation
+  - `:497-547` `analyzeGraph()` is the suitable entry point for adding `learning` precomputation
 
 ### Test surface
 
 - `tests/regression.sh:1293-1584`
-  - 已覆盖 graph-data golden、graph html assembly、build failure、drawer/search/minimap/insights/a11y/mobile 等回归
+  - Already covers graph-data golden, graph html assembly, build failure, drawer/search/minimap/insights/a11y/mobile, etc.
 - `tests/js/graph-wash-bootstrap.test.js`
-  - 已覆盖 helpers 缺失、localStorage 抛错等 bootstrap 容错
+  - Already covers bootstrap fault tolerance like missing helpers, localStorage throwing
 - `tests/graph-html-insights.regression-1.sh`
-  - 当前专门保护 `insights-panel` shell 和 weighted neighbor hooks
+  - Currently specifically protects `insights-panel` shell and weighted neighbor hooks
 
 ### Institutional learnings
 
 - `docs/solutions/ui-bugs/graph-wash-null-safety-and-label-truncation-fix-2026-04-21.md`
-  - 新增可选 DOM / 折叠状态时，要补 Node 运行时断言，不要只靠 grep 检查字符串存在
+  - When adding optional DOM / collapsed state, add Node runtime assertions, don't rely only on grep to check string existence
 - `docs/solutions/developer-experience/graph-style-simplification-to-wash-only-2026-04-20.md`
-  - graph shell 改造时，回归应更新到新边界，但不要继续保护已经不重要的旧实现细节
+  - When refactoring graph shell, regressions should be updated to new boundaries, but don't keep protecting old implementation details that no longer matter
 
 ## Key Technical Decisions
 
-- learning metadata 必须走预计算，并新增顶层 `learning` contract。
-  - 理由：推荐起点、社区强弱、模式降级和 drawer 学习解释顺序都属于默认协议，不该在前端临时推导。
+- Learning metadata must go through precomputation, and a new top-level `learning` contract is added.
+  - Reason: Recommended starting point, community strength, mode degradation, and drawer learning explanation order are all default protocols and shouldn't be derived on the front end at runtime.
 
-- 只增不改现有 `meta / nodes / edges / insights`。
-  - 理由：现有 graph-data golden 和 HTML build 依赖这些字段，新增顶层 `learning` 的破坏面最小。
+- Only add to, don't modify existing `meta / nodes / edges / insights`.
+  - Reason: Existing graph-data golden and HTML build depend on these fields; adding a top-level `learning` has the smallest blast radius.
 
-- 首页学习入口优先复用现有 `insights-panel` 壳，而不是新开第三主列。
-  - 理由：当前 `.app` 两列布局和右侧 drawer 已经稳定，真正需要重排的是 `canvas-wrap` 内的信息层级，而不是整页骨架。
+- Home learning entry reuses the existing `insights-panel` shell as a priority, rather than opening a third main column.
+  - Reason: The current `.app` two-column layout and right-side drawer are stable; what really needs rearranging is the information hierarchy inside `canvas-wrap`, not the whole page skeleton.
 
-- 所有学习入口必须汇聚到现有 `selectNode()` / `openDetailDrawer()` / `focusNode()` 主链路。
-  - 理由：这样能避免把学习驾驶舱做成第二套系统，减少左右不同步与测试倍增问题。
+- All learning entries must converge into the existing `selectNode()` / `openDetailDrawer()` / `focusNode()` main pipeline.
+  - Reason: This avoids making the learning cockpit into a second system, reducing left-right desync and test multiplication issues.
 
-- 第一版只做显式状态扩展，不上 reducer。
-  - 理由：当前新增状态仍然可以被清晰写成显式字段和小函数；过早上 reducer 只会把首页叙事改造和状态架构升级绑死。
+- The first version only adds explicit state expansion, no reducer.
+  - Reason: The new state can still be clearly written as explicit fields and small functions; introducing a reducer too early would just tie home narrative refactoring with state architecture upgrade.
 
-- 路径视图 V1 固定定义为“推荐起点驱动的受限学习子图”。
-  - 理由：这能把 scope 收住，避免在这轮把 path 语义膨胀成 shortest path、教程章节、个性化推荐等多种概念混合体。
+- The path view in V1 is fixed as "recommended-starting-point-driven, constrained learning subgraph".
+  - Reason: This constrains scope, avoiding inflating path semantics into a mix of shortest path, tutorial chapters, personalized recommendations, etc.
 
-- `path / community / global` 必须驱动**真子图模式**，不是只在全局图上做弱高亮。
-  - 理由：这轮的产品目标是让首页第一眼变成“开始学”，不是继续让用户被整张大图压住。
+- `path / community / global` must drive **true subgraph mode**, not just weak highlighting on the global graph.
+  - Reason: The product goal of this round is to make the home's first glance become "start learning", not to keep having users pressed down by the whole large graph.
 
-- `activeMode` 必须是前端当前模式的唯一真相，panel 激活态不再单独存第二份状态。
-  - 理由：同一页面不该同时维护 `activeMode + panelTab` 两份模式值，否则按钮高亮和实际子图很容易漂移。
+- `activeMode` must be the single source of truth for the current front-end mode; panel active state no longer stores a second copy.
+  - Reason: The same page shouldn't maintain both `activeMode + panelTab`, otherwise button highlight and actual subgraph can easily drift apart.
 
-- 子图模式下的 search / fit / minimap / footer 必须共享同一份 visible snapshot。
-  - 理由：如果只有画布隐藏了节点，而外围能力仍按全图工作，页面语义会变成“看起来是子图，实际还是全图”。
+- In subgraph mode, search / fit / minimap / footer must share the same visible snapshot.
+  - Reason: If only the canvas hides nodes while peripheral capabilities still work against the full graph, page semantics become "looks like a subgraph, actually still the full graph".
 
-- mode 切换默认只更新 visible snapshot 与居中，不重启力导向 simulation。
-  - 理由：学习驾驶舱更像同一张图上的视角切换，不该每点一次模式按钮都像重新布一张图。
+- Mode switching by default only updates the visible snapshot and centering, does not restart force-directed simulation.
+  - Reason: The learning cockpit is more like a viewpoint switch on the same graph, shouldn't feel like re-laying out a new graph each time a mode button is pressed.
 
 ## Open Questions
 
 ### Resolved during planning
 
-- 这轮要不要把学习入口做成新的左侧主列？
-  - 结论：不要。保留 `.app` 两列，优先重排 `canvas-wrap` 内的首屏叙事。
+- Should this round make the learning entry a new left-side main column?
+  - Conclusion: No. Preserve the `.app` two-column layout and prioritize rearranging the first-screen narrative inside `canvas-wrap`.
 
-- learning metadata 是不是应该前端现算？
-  - 结论：不要。社区强弱、推荐起点、默认模式和降级规则都走预计算。
+- Should learning metadata be computed on the front end at runtime?
+  - Conclusion: No. Community strength, recommended starting point, default mode, and degradation rules all go through precomputation.
 
-- 右侧抽屉要不要新做一套学习 drawer？
-  - 结论：不要。复用现有 drawer，只升级内容顺序。
+- Should the right-side drawer get a new learning drawer?
+  - Conclusion: No. Reuse the existing drawer, only upgrade content order.
 
-- 第一版要不要直接上 reducer？
-  - 结论：不要。先用显式状态与明确升级门槛。
+- Should the first version use a reducer?
+  - Conclusion: No. Use explicit state with clear upgrade thresholds first.
 
 ### Deferred to implementation
 
-- `learning` 里是否在第一版就加入 `nodes[].learning` 粒度的逐节点教学元数据。
-  - 当前建议先不做，先把顶层默认进入协议立住。
+- Whether to add `nodes[].learning` per-node teaching metadata granularity in the first version.
+  - Current recommendation: skip for now; first establish the top-level default entry protocol.
 
-- 学习入口 panel 是否保留一小块“次级洞察”区，还是完全让 Insights 退到二级入口。
-  - 当前建议保留，但不再占首页主叙事位。
+- Whether the learning entry panel should keep a small "secondary insight" area, or have Insights fully demoted to a secondary entry.
+  - Current recommendation: keep, but no longer occupy the home's main narrative position.
 
 ## High-level technical design
 
 ### Recommended contract shape
 
-`graph-data.json` 顶层新增 `learning`：
+Add `learning` at the top level of `graph-data.json`:
 
 ```json
 "learning": {
@@ -225,7 +225,7 @@ deepened: 2026-04-23
 
 ### Minimal front-end state extension
 
-在现有 `state` 上最小扩展：
+Minimum extension on the existing `state`:
 
 ```js
 state.learning = {
@@ -249,29 +249,29 @@ state.ui = {
 };
 ```
 
-约束：
+Constraints:
 
-- `state.learning.activeMode` 是当前模式的唯一真相，不再单独维护 `panelTab`
-- `state.visible` 是子图模式的共享快照，search / fit / minimap / footer 全部消费它
-- learning 的纯逻辑优先放进 `graph-wash-helpers.js`，例如：`defaultLearning()`、`normalizeLearning()`、`resolveInitialMode()`、`getVisibleNodeIds()`、`getVisibleLinks()`、`shouldAutoOpenDrawer()`
+- `state.learning.activeMode` is the single source of truth for the current mode; no separate `panelTab` maintained
+- `state.visible` is the shared snapshot in subgraph mode; search / fit / minimap / footer all consume it
+- Pure learning logic goes into `graph-wash-helpers.js` first, e.g.: `defaultLearning()`, `normalizeLearning()`, `resolveInitialMode()`, `getVisibleNodeIds()`, `getVisibleLinks()`, `shouldAutoOpenDrawer()`
 
 ### Event flow
 
-- boot 结束后执行 `bootstrapLearningEntry()`：
-  - path 可用 → 进入 `path` 并聚焦推荐起点
-  - path 不可用 → `community`
-  - 社区过弱 / 无可用社区 → `global`
-- path 失败时固定降级到 `community`，不引入 `start-only` 第二套降级语义
-- panel 切 mode：更新 `activeMode`、visible snapshot、panel 激活态和 drawer 上下文
-- 图中点击节点：保持当前 mode，只刷新 `selected` 与 drawer
-- drawer 内 next step：继续复用 `selectNode()` + zoom translate
-- 只有 `path` 模式默认自动展开 drawer；`community / global` 默认不强制展开
+- After boot, execute `bootstrapLearningEntry()`:
+  - path available → enter `path` and focus on recommended starting point
+  - path unavailable → `community`
+  - community too weak / no available community → `global`
+- On path failure, fixed degradation to `community`; no second degradation semantics like `start-only`
+- Panel switch mode: updates `activeMode`, visible snapshot, panel active state, and drawer context
+- Click node on graph: keep current mode, only refresh `selected` and drawer
+- Next step within drawer: continues to reuse `selectNode()` + zoom translate
+- Only `path` mode auto-opens the drawer by default; `community / global` don't force open by default
 
 ## Implementation units
 
-- [ ] **Unit 1: 预计算 learning metadata contract**
+- [ ] **Unit 1: Precompute learning metadata contract**
 
-**Goal:** 给 wash graph 提供稳定的学习入口输入，而不是让前端临时推导。
+**Goal:** Provide stable learning entry input to wash graph, rather than letting the front end derive it at runtime.
 
 **Requirements:** R1, R2, R3, R6
 
@@ -285,19 +285,19 @@ state.ui = {
 - Test: `tests/regression.sh`
 
 **Approach:**
-- 在 `analyzeGraph()` 产出的顶层新增 `learning`
-- 复用现有社区划分、边权、`initial_view` 与 `insights` 作为 learning 生成输入
-- 固定推荐起点、当前最重社区、三种模式入口、drawer 区块顺序与降级标志
-- 保持现有字段不变，`empty wiki` 也输出稳定空 `learning`
+- Add `learning` at the top level of `analyzeGraph()` output
+- Reuse existing community partitioning, edge weights, `initial_view`, and `insights` as learning generation input
+- Fix recommended starting point, current most important community, three mode entries, drawer section order, and degradation flags
+- Keep existing fields unchanged; `empty wiki` also outputs a stable empty `learning`
 
 **Verification:**
-- sample / empty graph-data golden 更新后稳定通过
-- test mode 两次输出完全一致
-- 现有 community clustering 与 confidence type 回归不回退
+- sample / empty graph-data golden passes stably after update
+- test mode produces exactly the same output twice
+- Existing community clustering and confidence type regressions don't regress
 
-- [ ] **Unit 2: 把 wash 首页改成学习入口优先**
+- [ ] **Unit 2: Change wash home page to learning-entry-first**
 
-**Goal:** 让首屏先给学习入口，而不是把 generic insights 和全局图作为默认叙事。
+**Goal:** Make the first screen show the learning entry first, rather than using generic insights and the global graph as the default narrative.
 
 **Requirements:** R1, R2, R4, R5
 
@@ -311,18 +311,18 @@ state.ui = {
 - Test: `tests/graph-html-a11y.regression-1.sh`
 
 **Approach:**
-- 保留 `.app` 两列布局和现有 drawer
-- 复用 `insights-panel` 作为学习入口 panel 宿主
-- 在 `tools` 区加入 `path / community / global` 显式模式切换
-- 让右侧 drawer 内容顺序变成“这是什么 / 为什么现在看 / 下一步看什么 / 原始内容 / 相邻节点”
+- Preserve `.app` two-column layout and existing drawer
+- Reuse `insights-panel` as the host for the learning entry panel
+- Add explicit `path / community / global` mode switch in the `tools` area
+- Change the right-side drawer content order to "what this is / why look now / what's next / raw content / neighbor nodes"
 
 **Verification:**
-- graph HTML shell 回归更新后通过
-- 关键 DOM hook 仍存在，不把现有 tests 全部推倒重写
+- graph HTML shell regression passes after update
+- Critical DOM hooks still exist, don't rewrite all existing tests from scratch
 
-- [ ] **Unit 3: 接入学习模式状态与默认进入链路**
+- [ ] **Unit 3: Wire up learning mode state and default entry pipeline**
 
-**Goal:** 用最小状态扩展支撑默认自动进入、三种模式切换和左中右联动。
+**Goal:** Use minimal state expansion to support automatic default entry, three mode switching, and left-center-right linkage.
 
 **Requirements:** R1, R2, R4, R5
 
@@ -335,24 +335,24 @@ state.ui = {
 - Optional test: new JS test for learning state/fallback logic
 
 **Approach:**
-- 在现有 state 上新增 `learning`、`visible` 与 `ui` 三小块显式状态，但当前模式只保留 `learning.activeMode` 一个真相源
-- 把默认模式选择、降级规则、visible set 计算和 drawer 默认展开规则优先抽到 `graph-wash-helpers.js`
-- 新增 `defaultLearning()`、`normalizeLearning()`、`hydrateLearningState()`、`bootstrapLearningEntry()`、`setLearningMode()`、`renderLearningPanel()`、`renderDrawerLearningSection()`
-- 所有学习入口最终复用 `selectNode()` / `openDetailDrawer()` / `focusNode()`
-- 不在前端重新计算 path/community 强弱，只应用预计算结果
-- mode 切换默认只更新 visible snapshot 与居中，不重启 simulation；显式“重排”按钮继续承担 restart
+- Add three small blocks of explicit state to the existing state: `learning`, `visible`, and `ui`, but keep `learning.activeMode` as the single source of truth for the current mode
+- Pull default mode selection, degradation rules, visible set calculation, and drawer default-open rules into `graph-wash-helpers.js` first
+- Add `defaultLearning()`, `normalizeLearning()`, `hydrateLearningState()`, `bootstrapLearningEntry()`, `setLearningMode()`, `renderLearningPanel()`, `renderDrawerLearningSection()`
+- All learning entries ultimately reuse `selectNode()` / `openDetailDrawer()` / `focusNode()`
+- Don't recompute path/community strength on the front end; only apply precomputed results
+- Mode switching by default only updates visible snapshot and centering, doesn't restart simulation; the explicit "relayout" button continues to handle restart
 
 **Verification:**
-- 缺失 `DATA.learning` 时不白屏
-- boot 默认进入推荐起点
-- path 失败固定退到 `community`，弱社区固定退到 `global`
-- 只有 `path` 模式默认自动展开 drawer
-- 切 mode 与点击节点不会把 panel / graph / drawer 弄乱
-- search / fit / minimap / footer 在子图模式下与 visible snapshot 保持一致
+- No white screen when `DATA.learning` is missing
+- Boot enters the recommended starting point by default
+- Path failure fixed degrade to `community`; weak community fixed degrade to `global`
+- Only `path` mode auto-opens the drawer by default
+- Mode switching and node clicks don't mess up panel / graph / drawer
+- search / fit / minimap / footer stay consistent with visible snapshot in subgraph mode
 
-- [ ] **Unit 4: 补齐学习驾驶舱回归与降级保护**
+- [ ] **Unit 4: Round out learning cockpit regressions and degradation protection**
 
-**Goal:** 把这轮改动从“能跑”收口成“不会把现有 wash 图谱搞坏”。
+**Goal:** Close this round of changes from "works" to "won't break the existing wash graph".
 
 **Requirements:** R6
 
@@ -367,61 +367,61 @@ state.ui = {
 - Optional: add runtime assertion coverage for visible snapshot consumers
 
 **Approach:**
-- 先锁 data contract，再锁 HTML shell，再补 bootstrap / fallback / visible snapshot 单测，最后做运行时回归
-- 对新增可交互状态优先补 Node `vm` 断言，而不是只靠 grep
-- 新增 dedicated learning 纯逻辑单测，避免把所有规则都塞进 bootstrap test
-- 新增 learning cockpit 专门 HTML 回归，锁学习 panel shell、mode switch hooks 和 drawer 学习区块顺序
-- 重点看自动默认选中后的 `drawer-open` / `aria-hidden` / fit / search / minimap / footer 初始行为
+- First lock data contract, then lock HTML shell, then add bootstrap / fallback / visible snapshot unit tests, and finally do runtime regression
+- For newly added interactive state, prioritize adding Node `vm` assertions rather than relying only on grep
+- Add dedicated learning pure logic unit tests, avoiding stuffing all rules into bootstrap test
+- Add learning cockpit dedicated HTML regression, locking learning panel shell, mode switch hooks, and drawer learning section order
+- Focus on the initial `drawer-open` / `aria-hidden` / fit / search / minimap / footer behavior after auto-default selection
 
 **Verification:**
-- `bash tests/regression.sh` 全绿
-- graph HTML 独立回归全绿
-- `graph-wash-bootstrap` 与 `graph-wash-learning` 单测全绿
-- 子图模式下 search / fit / minimap / footer 与 visible snapshot 保持一致
-- 手工打开生成后的 `wiki/knowledge-graph.html`，验证默认入口、模式切换、drawer 学习解释与降级路径
+- `bash tests/regression.sh` all green
+- graph HTML independent regression all green
+- `graph-wash-bootstrap` and `graph-wash-learning` unit tests all green
+- search / fit / minimap / footer stay consistent with visible snapshot in subgraph mode
+- Manually open the generated `wiki/knowledge-graph.html`, verify default entry, mode switching, drawer learning explanation, and degradation paths
 
 ## Risks and failure modes
 
-- **做成第二套系统**：panel click、graph click、drawer click 各自维护状态，最终导致左右不同步。
-- **前端现算学习规则**：社区强弱与默认入口在浏览器里重新推导，和预计算结果漂移。
-- **顶层布局改太大**：把 `.app` 改成三栏主布局，导致 drawer/mobile/search/a11y 回归一起炸。
-- **path 语义漂移**：一会儿是学习序列，一会儿是 shortest path，一会儿是推荐链，导致实现和测试都无法收口。
-- **自动默认选中副作用**：旧默认态从“无选中节点”变成“默认选中推荐起点”，容易影响 fit、search、minimap、drawer 初始行为。
-- **contract 膨胀过快**：第一版就把节点级教学元数据、路径文案、个性化逻辑全塞进 `learning`，导致 golden 和前后端边界同时失稳。
+- **Turning into a second system**: panel click, graph click, drawer click each maintain their own state, ultimately causing left-right desync.
+- **Recomputing learning rules on the front end**: community strength and default entry are re-derived in the browser, drifting from precomputed results.
+- **Top-level layout changes too big**: Changing `.app` to a three-column main layout, causing drawer/mobile/search/a11y regressions to blow up together.
+- **Path semantics drift**: Sometimes learning sequence, sometimes shortest path, sometimes recommendation chain, causing implementation and tests to be unclosable.
+- **Auto default selection side effects**: Old default state changes from "no selected node" to "default select recommended starting point", easily affecting fit, search, minimap, drawer initial behavior.
+- **Contract inflation too fast**: First version stuffs node-level teaching metadata, path copy, personalization logic all into `learning`, causing golden and front/back boundaries to become unstable together.
 
 ## Testing strategy
 
-推荐按下面顺序执行验证：
+Recommend verifying in the following order:
 
 1. **data contract**
-   - 更新并通过 sample / empty graph-data golden
-   - 确保 test mode 稳定
+   - Update and pass sample / empty graph-data golden
+   - Ensure test mode is stable
 
 2. **HTML shell**
-   - 更新 `graph-html-*` 回归，确认学习入口 shell、toolbar、search、drawer、a11y hook 仍稳定
+   - Update `graph-html-*` regressions, confirming learning entry shell, toolbar, search, drawer, a11y hooks are still stable
 
 3. **runtime / bootstrap**
-   - 补 `graph-wash-bootstrap` 相关 JS 单测
-   - 覆盖 learning 缺失、path/community/global 降级、默认自动进入推荐起点
+   - Add `graph-wash-bootstrap` related JS unit tests
+   - Cover missing learning, path/community/global degradation, auto-default entering recommended starting point
 
 4. **manual verification**
-   - 运行 `bash scripts/build-graph-data.sh <wiki_root>`
-   - 运行 `bash scripts/build-graph-html.sh <wiki_root>`
-   - 打开 `wiki/knowledge-graph.html`，验证推荐起点、模式切换、drawer 学习解释与降级路径
+   - Run `bash scripts/build-graph-data.sh <wiki_root>`
+   - Run `bash scripts/build-graph-html.sh <wiki_root>`
+   - Open `wiki/knowledge-graph.html`, verify recommended starting point, mode switching, drawer learning explanation, and degradation paths
 
 ## Suggested execution order
 
-建议按 3 个提交边界实施，便于后续 review：
+Recommend implementing along 3 commit boundaries for easier review:
 
 1. `graph-data contract + golden`
 2. `HTML shell + runtime wiring`
 3. `tests + fallback hardening`
 
-实施约束：
+Implementation constraints:
 
-- Unit 1 先落 `learning` contract，并把 sample / empty golden 锁住
-- Unit 2 与 Unit 3 顺序执行，不并行拆 worktree；两者都会重改 `templates/graph-styles/wash/`
-- Unit 3 落地时同时引入 visible snapshot，不要先做“假子图模式”再回头补外围同步
-- Unit 4 最后统一收口 dedicated learning tests、learning cockpit HTML regression 与 visible snapshot 一致性断言
+- Unit 1 first lands the `learning` contract and locks sample / empty golden
+- Unit 2 and Unit 3 run sequentially, no parallel worktree split; both rewrite `templates/graph-styles/wash/`
+- Unit 3 introduces visible snapshot at the same time; don't do "fake subgraph mode" first and then go back to fix peripheral sync
+- Unit 4 finally rounds out dedicated learning tests, learning cockpit HTML regression, and visible snapshot consistency assertions
 
-这样能把“数据层决定了什么”和“UI 如何消费这些数据”分开审，不会把 contract、layout、状态、测试四种变化混成一个无法 review 的大 diff。
+This separates "what the data layer decides" from "how the UI consumes the data" so they can be reviewed separately, avoiding mixing contract, layout, state, and tests into one un-reviewable large diff.

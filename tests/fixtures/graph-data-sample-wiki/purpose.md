@@ -1,3 +1,3 @@
-# 测试知识库
+# Test Wiki
 
-这是一个用于测试交互式图谱数据生成的 fixture。
+This is a fixture used for testing interactive graph data generation.

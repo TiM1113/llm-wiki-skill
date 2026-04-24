@@ -1,38 +1,38 @@
 # HERMES.md
 
-这是 llm-wiki 在 Hermes 下的入口文件。
+This is the entry file for llm-wiki under Hermes.
 
-先看这三个文件：
+Start with these three files:
 
-- [README.md](README.md)：多平台总说明
-- [platforms/hermes/README.md](platforms/hermes/README.md)：Hermes 专属入口提示
-- [SKILL.md](SKILL.md)：核心能力和工作流
+- [README.md](README.md): Multi-platform overview
+- [platforms/hermes/README.md](platforms/hermes/README.md): Hermes-specific entry point
+- [SKILL.md](SKILL.md): Core capabilities and workflows
 
-## Hermes 安装动作
+## Hermes Installation
 
-如果当前任务是安装这个 skill，执行：
+If the current task is to install this skill, run:
 
 ```bash
 bash install.sh --platform hermes
 ```
 
-默认安装到 `~/.hermes/skills/llm-wiki`。
+Default install location: `~/.hermes/skills/llm-wiki`.
 
-默认只准备知识库核心主线。如果这次要自动提取网页 / X / 微信公众号 / YouTube / 知乎，再执行：
+By default, only the core wiki mainline is prepared. If you also need automatic extraction for web pages / X / YouTube, run:
 
 ```bash
 bash install.sh --platform hermes --with-optional-adapters
 ```
 
-## 重要提醒
+## Important Notes
 
-- 不要把这个仓库当成 Hermes 专属仓库；Claude Code、Codex、OpenClaw 也共用同一套核心内容
-- Hermes 会优先读取仓库根的 `HERMES.md`；这里负责安装入口，知识库能力本身仍以 [SKILL.md](SKILL.md) 为准
-- 安装完成后，再按 [SKILL.md](SKILL.md) 的工作流继续做事
+- Do not treat this repo as Hermes-exclusive; Claude Code, Codex, and OpenClaw also share the same core content
+- Hermes reads the root `HERMES.md` first; this file handles the installation entry point, while the wiki capabilities themselves are defined in [SKILL.md](SKILL.md)
+- After installation, continue following the workflows in [SKILL.md](SKILL.md)
 
-## 使用顺序
+## Usage Order
 
-安装完成后，按 [SKILL.md](SKILL.md) 中的工作流继续执行：
+After installation, follow the workflows in [SKILL.md](SKILL.md):
 
 1. `init`
 2. `ingest`

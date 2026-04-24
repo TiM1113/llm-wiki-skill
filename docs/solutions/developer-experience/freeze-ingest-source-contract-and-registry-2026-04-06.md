@@ -89,9 +89,9 @@ done < <(bash "$SOURCE_REGISTRY_SCRIPT" unique-dependencies bundled)
 The follow-through step was to wire the human-facing boundary to the same model:
 
 - [`install.sh`](../../install.sh) now prints the three source classes directly from the registry, then prints the shared adapter-state summary instead of inventing a second status list.
-- [`README.md`](../../README.md) now points to `scripts/source-registry.tsv` as the authoritative source boundary and describes the same `核心主线 / 可选外挂 / 手动入口` split.
+- [`README.md`](../../README.md) now points to `scripts/source-registry.tsv` as the authoritative source boundary and describes the same `Core mainline / Optional adapter / Manual entry` split.
 - [`SKILL.md`](../../SKILL.md) now tells ingest to read `source-registry.sh get <source_id>` and tells `status` to count sources by the registry’s `source_label` and `raw_dir`, while reusing `scripts/adapter-state.sh summary-human` instead of rewriting status text.
-- [`templates/schema-template.md`](../../templates/schema-template.md) now mirrors the same three-way boundary and uses the same normalized labels such as `PDF / 本地 PDF` and `Markdown/文本/HTML`.
+- [`templates/schema-template.md`](../../templates/schema-template.md) now mirrors the same three-way boundary and uses the same normalized labels such as `PDF / Local PDF` and `Markdown/Text/HTML`.
 
 The install output now makes the boundary visible instead of implicit:
 
@@ -100,9 +100,9 @@ core_sources="$(join_source_labels core_builtin)"
 optional_sources="$(join_source_labels optional_adapter)"
 manual_sources="$(join_source_labels manual_only)"
 
-echo "核心主线：$core_sources"
-echo "可选外挂：$optional_sources"
-echo "手动入口：$manual_sources"
+echo "Core mainline: $core_sources"
+echo "Optional adapters: $optional_sources"
+echo "Manual entry: $manual_sources"
 ```
 
 [`tests/regression.sh`](../../tests/regression.sh) now locks the behavior by checking both the frozen data and the consumers that must stay aligned to it:

@@ -1,38 +1,38 @@
 # AGENTS.md
 
-这是 llm-wiki 在 Codex 下的入口文件。
+This is the entry file for llm-wiki under Codex.
 
-先看这三个文件：
+Start with these three files:
 
-- [README.md](README.md)：多平台总说明
-- [platforms/codex/AGENTS.md](platforms/codex/AGENTS.md)：Codex 专属入口提示
-- [SKILL.md](SKILL.md)：核心能力和工作流
+- [README.md](README.md): Multi-platform overview
+- [platforms/codex/AGENTS.md](platforms/codex/AGENTS.md): Codex-specific entry point
+- [SKILL.md](SKILL.md): Core capabilities and workflows
 
-## Codex 安装动作
+## Codex Installation
 
-如果当前任务是安装这个 skill，执行：
+If the current task is to install this skill, run:
 
 ```bash
 bash install.sh --platform codex
 ```
 
-默认安装到 `~/.codex/skills/llm-wiki`。如果用户机器上还是旧的 `~/.Codex/skills`，安装器也会自动兼容。
+Default install location: `~/.codex/skills/llm-wiki`. If the user's machine still uses the legacy `~/.Codex/skills`, the installer will automatically handle compatibility.
 
-默认只准备知识库核心主线。如果这次要自动提取网页 / X / 微信公众号 / YouTube / 知乎，再执行：
+By default, only the core wiki mainline is prepared. If you also need automatic extraction for web pages / X / YouTube, run:
 
 ```bash
 bash install.sh --platform codex --with-optional-adapters
 ```
 
-## 重要提醒
+## Important Notes
 
-- 不要把这个仓库当成 Codex 专属仓库；Claude Code、OpenClaw、Hermes 也共用同一套核心内容
-- 安装完成后，再按 [SKILL.md](SKILL.md) 的工作流继续做事
-- 如果 OpenClaw 使用的是自定义技能目录，可以改用 `--target-dir <你的技能目录>/llm-wiki`
+- Do not treat this repo as Codex-exclusive; Claude Code, OpenClaw, and Hermes also share the same core content
+- After installation, continue following the workflows in [SKILL.md](SKILL.md)
+- If OpenClaw uses a custom skill directory, use `--target-dir <your-skill-directory>/llm-wiki` instead
 
-## 使用顺序
+## Usage Order
 
-安装完成后，按 [SKILL.md](SKILL.md) 中的工作流继续执行：
+After installation, follow the workflows in [SKILL.md](SKILL.md):
 
 1. `init`
 2. `ingest`

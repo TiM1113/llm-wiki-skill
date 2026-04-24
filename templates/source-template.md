@@ -1,49 +1,51 @@
 ---
-tags: [素材摘要]
+tags: [source-summary]
 created: {{DATE}}
 updated: {{DATE}}
 sources: []
 source_type: {{TYPE}}
 source_path: {{RAW_PATH}}
+images: 0
+image_paths: []
 ---
 
 # {{SOURCE_TITLE}}
 
-> 一句话总结这篇素材的核心观点
+> One-sentence summary of the source's core argument
 
-## 基本信息
+## Basic Information
 
-- **来源类型**：{{TYPE}}（文章 / 推文 / 公众号 / PDF / 笔记 / 视频）
-- **原文位置**：{{RAW_PATH}}
-- **消化日期**：{{DATE}}
+- **Source type**: {{TYPE}} (article / tweet / PDF / note / video)
+- **Original location**: {{RAW_PATH}}
+- **Ingestion date**: {{DATE}}
 
-## 核心观点
+## Core Arguments
 
-（3-5 个要点，每个要点用 1-2 句话说清楚）
+(3-5 key points, each explained in 1-2 sentences)
 
-1. **要点一**：...
-2. **要点二**：...
-3. **要点三**：...
+1. **Point one**: ...
+2. **Point two**: ...
+3. **Point three**: ...
 
-## 关键概念
+## Key Concepts
 
-（素材中提到的重要概念，链接到或标注需要创建的实体页）
+(Important concepts mentioned in the source, linked to or flagged for entity page creation)
 
-- [[概念1]]
-- [[概念2]]
+- [[Concept 1]]
+- [[Concept 2]]
 
-## 与其他素材的关联
+## Connections to Other Sources
 
-（这篇素材和已有素材之间有什么联系？是补充、反驳、还是扩展？）
+(How does this source relate to existing sources? Does it supplement, contradict, or extend them?)
 
-- 与 [[另一篇素材]] 的关系：...
+- Relationship with [[Another source]]: ...
 
-## 原文精彩摘录
+## Notable Excerpts
 
-（值得原样保留的 2-3 段原文）
+(2-3 passages worth preserving verbatim)
 
-> 摘录一...
+> Excerpt one...
 
-> 摘录二...
+> Excerpt two...
 
-## 相关页面
+## Related Pages

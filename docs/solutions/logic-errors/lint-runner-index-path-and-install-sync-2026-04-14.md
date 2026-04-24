@@ -1,91 +1,91 @@
 ---
-title: lint-runner INDEX_FILE 路径错误与安装副本未同步
+title: lint-runner INDEX_FILE path error and installed copy not synced
 date: 2026-04-14
 category: logic-errors
 module: llm-wiki lint-runner
 problem_type: logic_error
 component: tooling
 symptoms:
-  - codex 运行 lint 工作流时报 "ERROR: index.md 不存在：.../wiki/index.md"，exit 1 退出
-  - Phase C 回归测试 Step B lint 失败
-  - 源码修复后 codex 重跑仍然失败，提示相同的路径错误
+  - codex reports "ERROR: index.md does not exist: .../wiki/index.md" when running lint workflow, exits with code 1
+  - Phase C regression test Step B lint failure
+  - After fixing source code, codex re-run still fails with the same path error
 root_cause: logic_error
 resolution_type: code_fix
 severity: medium
 tags: [path-resolution, install-sync, regression, fixture, index-file]
 ---
 
-# lint-runner INDEX_FILE 路径错误与安装副本未同步
+# lint-runner INDEX_FILE path error and installed copy not synced
 
 ## Problem
 
-`lint-runner.sh` 的 `INDEX_FILE` 变量指向 `$WIKI_DIR/index.md`（即 `$WIKI_ROOT/wiki/index.md`），但 `index.md` 实际位于 `$WIKI_ROOT/index.md`。路径多了一层 `wiki/`，导致脚本对任何正常初始化的知识库都报错退出。修复源码后，`~/.codex/skills/` 下的已安装副本未同步，codex 仍运行旧版。
+`lint-runner.sh`'s `INDEX_FILE` variable pointed to `$WIKI_DIR/index.md` (i.e., `$WIKI_ROOT/wiki/index.md`), but `index.md` is actually at `$WIKI_ROOT/index.md`. The path had one extra `wiki/` level, causing the script to error-exit on any normally initialized wiki. After fixing the source code, the installed copy under `~/.codex/skills/` was not synced, so codex still ran the old version.
 
 ## Symptoms
 
-- 运行 `lint-runner.sh` 报错：`ERROR: index.md 不存在：.../cowork-wiki/wiki/index.md`，exit 1
-- 测试 fixture 中 `index.md` 位于 `wiki/` 子目录内，与真实 wiki 根目录布局不符
-- 源码修复后，codex 侧重跑仍然失败——已安装副本是旧的
+- Running `lint-runner.sh` errors: `ERROR: index.md does not exist: .../cowork-wiki/wiki/index.md`, exit 1
+- Test fixture had `index.md` inside the `wiki/` subdirectory, mismatching the real wiki root layout
+- After source fix, codex side re-run still failed — the installed copy was stale
 
 ## What Didn't Work
 
-- **只改源码就以为修好了**：Codex 从 `~/.codex/skills/llm-wiki/scripts/lint-runner.sh` 读已安装副本，源码和运行环境是分离的
-- **测试 fixture 掩盖了 bug**：fixture 把 `index.md` 放在 `wiki/` 下，复制了脚本的错误假设，导致测试通过但真实环境失败
+- **Assuming fixing source code alone was enough**: Codex reads the installed copy from `~/.codex/skills/llm-wiki/scripts/lint-runner.sh`; source and runtime environments are separate
+- **Test fixture masked the bug**: Fixture placed `index.md` under `wiki/`, replicating the script's wrong assumption, causing tests to pass but real environments to fail
 
 ## Solution
 
-**修复 1：lint-runner.sh 路径变量**
+**Fix 1: lint-runner.sh path variable**
 
 ```bash
-# Before（错误）
-INDEX_FILE="$WIKI_DIR/index.md"    # → $WIKI_ROOT/wiki/index.md
+# Before (wrong)
+INDEX_FILE="$WIKI_DIR/index.md"    # -> $WIKI_ROOT/wiki/index.md
 
-# After（正确）
-INDEX_FILE="$WIKI_ROOT/index.md"   # → $WIKI_ROOT/index.md
+# After (correct)
+INDEX_FILE="$WIKI_ROOT/index.md"   # -> $WIKI_ROOT/index.md
 ```
 
-**修复 2：测试 fixture 目录结构**
+**Fix 2: Test fixture directory structure**
 
 ```
 # Before
-tests/fixtures/lint-sample-wiki/wiki/index.md   # 多了一层 wiki/
+tests/fixtures/lint-sample-wiki/wiki/index.md   # extra wiki/ level
 
 # After
-tests/fixtures/lint-sample-wiki/index.md         # 与真实布局一致
+tests/fixtures/lint-sample-wiki/index.md         # matches real layout
 ```
 
-同步更新 `tests/expected/lint-output.txt`（断链列表从包含 `[[Ghost]]` 改为由 index 一致性检查报告）。
+Also updated `tests/expected/lint-output.txt` (broken link list changed from containing `[[Ghost]]` to being reported by index consistency check).
 
-**修复 3：同步安装副本**
+**Fix 3: Sync installed copy**
 
 ```bash
 bash install.sh --platform codex
-# 将源码修复同步到 ~/.codex/skills/llm-wiki/scripts/lint-runner.sh
+# Syncs source fix to ~/.codex/skills/llm-wiki/scripts/lint-runner.sh
 ```
 
-验证：
+Verification:
 
 ```bash
 grep 'INDEX_FILE=' ~/.codex/skills/llm-wiki/scripts/lint-runner.sh
-# 应输出：INDEX_FILE="$WIKI_ROOT/index.md"
+# Should output: INDEX_FILE="$WIKI_ROOT/index.md"
 ```
 
 ## Why This Works
 
-核心问题是路径变量的目录层级错误。`$WIKI_DIR` 指向 `$WIKI_ROOT/wiki/`（内容子目录），而 `index.md` 实际位于 `$WIKI_ROOT/`（知识库根目录），由 `templates/schema-template.md` 第 31 行确认——`index.md` 与 `raw/`、`wiki/` 等顶级目录并列。
+The core issue was a directory level error in the path variable. `$WIKI_DIR` points to `$WIKI_ROOT/wiki/` (content subdirectory), while `index.md` is actually at `$WIKI_ROOT/` (wiki root directory), confirmed by `templates/schema-template.md` line 31 — `index.md` sits alongside `raw/`, `wiki/` and other top-level directories.
 
-测试 fixture 的问题在于它复制了脚本中的错误假设，而非真实目录结构，形成"测试通过但生产失败"的假象。
+The test fixture problem was that it replicated the script's wrong assumption rather than the real directory structure, creating a "tests pass but production fails" illusion.
 
-安装副本问题源于项目架构设计：源码仓库与运行环境（`~/.codex/skills/`）是分离的，修改源码不会自动反映到已安装位置，必须显式重装。
+The installed copy issue stems from the project's architecture: source repo and runtime environment (`~/.codex/skills/`) are separate; modifying source code doesn't automatically reflect to the installed location — explicit reinstall is required.
 
 ## Prevention
 
-- **fixture 与真实结构对齐**：测试 fixture 目录必须从真实 wiki 结构镜像，不能手工凭感觉创建。可以在 CI 中用 schema-template.md 校验 fixture 结构
-- **源码改脚本后必须重装**：在 CLAUDE.md 的推送前测试规则里已写入——修改 `scripts/` 下任何文件后，push 前必须 `bash install.sh --platform codex` 同步
-- **安装后冒烟测试**：`lint-runner.sh` 自身已有路径不存在时的 exit 1 检查，但应该在 install 流程末尾加一步 `bash scripts/lint-runner.sh tests/fixtures/lint-sample-wiki` 确认核心路径可解析
-- **路径变量集中定义**：`WIKI_ROOT`、`WIKI_DIR`、`INDEX_FILE` 等路径变量应集中到一处，避免各脚本各自拼接时产生不一致
+- **Align fixtures with real structure**: Test fixture directories must mirror from real wiki structure, not be hand-created by feel. Can validate fixture structure against schema-template.md in CI
+- **Must reinstall after modifying scripts**: Already written into CLAUDE.md's pre-push testing rules — after modifying any file under `scripts/`, must `bash install.sh --platform codex` before pushing
+- **Post-install smoke test**: `lint-runner.sh` already has exit 1 check when path doesn't exist, but should add a step at install flow end: `bash scripts/lint-runner.sh tests/fixtures/lint-sample-wiki` to confirm core paths resolve
+- **Centralize path variable definitions**: `WIKI_ROOT`, `WIKI_DIR`, `INDEX_FILE` and other path variables should be defined in one place to avoid inconsistencies from each script assembling its own paths
 
 ## Related
 
-- [crystallize-log-path-mismatch-2026-04-13](../documentation-gaps/crystallize-log-path-mismatch-2026-04-13.md)：同类路径混淆（`$WIKI_ROOT/wiki/log.md` vs `$WIKI_ROOT/log.md`），那一次是文档层面的修复，这次是代码层面。两次出现说明 `$WIKI_ROOT/wiki/X` vs `$WIKI_ROOT/X` 是这个项目的高频错误模式，值得集中定义路径变量
-- [ingest-step1-validation-contract-and-crystallize-workflow-2026-04-13](../workflow-issues/ingest-step1-validation-contract-and-crystallize-workflow-2026-04-13.md)：同一次 Phase B 验收中发现的问题
+- [crystallize-log-path-mismatch-2026-04-13](../documentation-gaps/crystallize-log-path-mismatch-2026-04-13.md): Same class of path confusion (`$WIKI_ROOT/wiki/log.md` vs `$WIKI_ROOT/log.md`), that time was a documentation-level fix, this time is code-level. Two occurrences indicate `$WIKI_ROOT/wiki/X` vs `$WIKI_ROOT/X` is a high-frequency error pattern in this project, worth centralizing path variable definitions
+- [ingest-step1-validation-contract-and-crystallize-workflow-2026-04-13](../workflow-issues/ingest-step1-validation-contract-and-crystallize-workflow-2026-04-13.md): Issue found during the same Phase B acceptance

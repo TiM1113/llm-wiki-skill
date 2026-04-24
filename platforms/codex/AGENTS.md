@@ -1,23 +1,23 @@
-# Codex 入口
+# Codex Entry Point
 
-<!-- llm-wiki context: 如有知识库，优先查阅 wiki/index.md -->
+<!-- llm-wiki context: if a wiki exists, consult wiki/index.md first -->
 
-这是 Codex 的薄入口文件。共享说明看 [../../README.md](../../README.md)，核心能力看 [../../SKILL.md](../../SKILL.md)。
+This is a thin entry file for Codex. See [../../README.md](../../README.md) for shared instructions, and [../../SKILL.md](../../SKILL.md) for core capabilities and workflows.
 
-## Codex 应该怎么装
+## How to Install for Codex
 
-执行：
+Run:
 
 ```bash
 bash install.sh --platform codex
 ```
 
-如果你还需要网页 / X / 微信公众号 / YouTube / 知乎自动提取，再执行：
+If you also need automatic extraction for web pages / X / YouTube, run:
 
 ```bash
 bash install.sh --platform codex --with-optional-adapters
 ```
 
-默认安装位置：`~/.codex/skills/llm-wiki`
+Default install location: `~/.codex/skills/llm-wiki`
 
-如果用户环境仍然在用旧的 `~/.Codex/skills`，安装器会自动兼容。
+If the user's environment still uses the legacy `~/.Codex/skills`, the installer will automatically handle compatibility.

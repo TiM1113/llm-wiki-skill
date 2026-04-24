@@ -1,13 +1,13 @@
 #!/bin/bash
-# 外挂状态检测脚本：统一判断可选外挂的安装/环境/运行状态
-# 五种状态：not_installed / env_unavailable（仅 uv 依赖的来源） / runtime_failed / unsupported / empty_result
+# Adapter state detection script: unified check for optional adapter install/env/runtime status
+# Five states: not_installed / env_unavailable (uv-dependent sources only) / runtime_failed / unsupported / empty_result
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SOURCE_REGISTRY_SCRIPT="$SCRIPT_DIR/source-registry.sh"
-# 微信工具 URL 从共享配置读取，与 install.sh 保持一致
+# Shared config reference (kept for consistency with install.sh)
 source "$SCRIPT_DIR/shared-config.sh"
 source "$SCRIPT_DIR/runtime-context.sh"
 SKILL_ROOT_OVERRIDE=""
@@ -15,7 +15,7 @@ LAYOUT_MODE_OVERRIDE=""
 
 usage() {
   cat <<'EOF'
-用法：
+Usage:
   bash scripts/adapter-state.sh [--skill-root <path>] [--layout-mode <source_checkout|installed_skill|upgrade_target>] check <source_id>
   bash scripts/adapter-state.sh [--skill-root <path>] [--layout-mode <source_checkout|installed_skill|upgrade_target>] summary
   bash scripts/adapter-state.sh [--skill-root <path>] [--layout-mode <source_checkout|installed_skill|upgrade_target>] summary-human
@@ -80,22 +80,22 @@ print_header() {
 state_label() {
   case "$1" in
     available)
-      printf '%s\n' "可用"
+      printf '%s\n' "Available"
       ;;
     not_installed)
-      printf '%s\n' "未安装"
+      printf '%s\n' "Not installed"
       ;;
     env_unavailable)
-      printf '%s\n' "环境不满足"
+      printf '%s\n' "Environment not met"
       ;;
     runtime_failed)
-      printf '%s\n' "运行失败"
+      printf '%s\n' "Runtime failed"
       ;;
     unsupported)
-      printf '%s\n' "不支持自动提取"
+      printf '%s\n' "Auto-extraction not supported"
       ;;
     empty_result)
-      printf '%s\n' "结果为空"
+      printf '%s\n' "Empty result"
       ;;
     *)
       printf '%s\n' "$1"
@@ -108,14 +108,11 @@ default_install_hint() {
   local adapter_name="$2"
 
   case "$source_id" in
-    web_article|x_twitter|zhihu_article)
-      printf '%s\n' "重新运行当前平台的 llm-wiki 安装命令，并追加 --with-optional-adapters，确认 ${adapter_name} 已准备到技能目录"
-      ;;
-    wechat_article)
-      printf '%s\n' "先安装 uv，再执行：uv tool install ${WECHAT_TOOL_URL}"
+    web_article|x_twitter)
+      printf '%s\n' "Re-run the llm-wiki install command for your platform with --with-optional-adapters to ensure ${adapter_name} is prepared in the skill directory"
       ;;
     youtube_video)
-      printf '%s\n' "重新运行当前平台的 llm-wiki 安装命令，并追加 --with-optional-adapters，确认 ${adapter_name} 已准备到技能目录"
+      printf '%s\n' "Re-run the llm-wiki install command for your platform with --with-optional-adapters to ensure ${adapter_name} is prepared in the skill directory"
       ;;
     *)
       printf '%s\n' "-"
@@ -127,11 +124,11 @@ optional_hint() {
   local source_id="$1"
 
   case "$source_id" in
-    web_article|x_twitter|zhihu_article)
-      printf '%s\n' '如需复用已登录的浏览器会话，可执行：open -na "Google Chrome" --args --remote-debugging-port=9222'
+    web_article|x_twitter)
+      printf '%s\n' 'To reuse an existing browser session, run: open -na "Google Chrome" --args --remote-debugging-port=9222'
       ;;
-    wechat_article|youtube_video)
-      printf '%s\n' "先安装 uv：brew install uv"
+    youtube_video)
+      printf '%s\n' "-"
       ;;
     *)
       printf '%s\n' "-"
@@ -166,7 +163,7 @@ resolve_preflight_state() {
   local state detail recovery_action install_hint
 
   record="$(bash "$SOURCE_REGISTRY_SCRIPT" get "$source_id")" || {
-    echo "未知来源：$source_id" >&2
+    echo "Unknown source: $source_id" >&2
     exit 1
   }
 
@@ -177,51 +174,33 @@ EOF
   case "$source_category" in
     core_builtin)
       state="available"
-      detail="核心主线可直接进入，不依赖外挂"
-      recovery_action="直接继续主线"
+      detail="Core pipeline can proceed directly, no adapter required"
+      recovery_action="Continue with the core pipeline"
       install_hint="-"
       ;;
     manual_only)
       state="unsupported"
-      detail="该来源当前只支持手动进入主线"
-      recovery_action="直接走手动入口"
+      detail="This source currently only supports manual entry into the pipeline"
+      recovery_action="Use the manual entry path"
       install_hint="-"
       ;;
     optional_adapter)
       case "$source_id" in
-        wechat_article)
-          if ! has_uv; then
-            state="env_unavailable"
-            detail="缺少 uv，当前无法准备微信公众号自动提取环境"
-            recovery_action="先补环境；现在也可以直接走手动入口"
-            install_hint="$(optional_hint "$source_id")"
-          elif ! dependency_installed "$dependency_name" "$dependency_type"; then
-            state="not_installed"
-            detail="未找到 ${adapter_name}"
-            recovery_action="先补安装；现在也可以直接走手动入口"
-            install_hint="$(default_install_hint "$source_id" "$adapter_name")"
-          else
-            state="available"
-            detail="${adapter_name} 已可用"
-            recovery_action="继续自动提取"
-            install_hint="-"
-          fi
-          ;;
-        web_article|x_twitter|zhihu_article)
+        web_article|x_twitter)
           if ! dependency_installed "$dependency_name" "$dependency_type"; then
             state="not_installed"
-            detail="未找到 ${adapter_name}"
-            recovery_action="先补安装；现在也可以直接走手动入口"
+            detail="${adapter_name} not found"
+            recovery_action="Install the adapter first; you can also use the manual entry path now"
             install_hint="$(default_install_hint "$source_id" "$adapter_name")"
           else
             state="available"
             if chrome_debug_ready; then
-              detail="${adapter_name} 已可用，且已检测到可复用的 Chrome 调试会话"
-              recovery_action="继续自动提取"
+              detail="${adapter_name} is available, and a reusable Chrome debug session was detected"
+              recovery_action="Continue with auto-extraction"
               install_hint="-"
             else
-              detail="${adapter_name} 已可用；未检测到 9222，将在需要时自动拉起临时浏览器"
-              recovery_action="继续自动提取；如需复用已登录会话，可先开启 Chrome 调试端口 9222"
+              detail="${adapter_name} is available; port 9222 not detected, a temporary browser will be launched when needed"
+              recovery_action="Continue with auto-extraction; to reuse an existing session, open Chrome debug port 9222 first"
               install_hint="$(optional_hint "$source_id")"
             fi
           fi
@@ -229,38 +208,38 @@ EOF
         youtube_video)
           if ! dependency_installed "$dependency_name" "$dependency_type"; then
             state="not_installed"
-            detail="未找到 ${adapter_name}"
-            recovery_action="先补安装；现在也可以直接走手动入口"
+            detail="${adapter_name} not found"
+            recovery_action="Install the adapter first; you can also use the manual entry path now"
             install_hint="$(default_install_hint "$source_id" "$adapter_name")"
           elif ! has_uv; then
             state="env_unavailable"
-            detail="缺少 uv，当前无法运行 YouTube 字幕提取"
-            recovery_action="先补环境；现在也可以直接走手动入口"
+            detail="uv is missing, cannot run YouTube transcript extraction"
+            recovery_action="Install the prerequisite first; you can also use the manual entry path now"
             install_hint="$(optional_hint "$source_id")"
           else
             state="available"
-            detail="${adapter_name} 已可用"
-            recovery_action="继续自动提取"
+            detail="${adapter_name} is available"
+            recovery_action="Continue with auto-extraction"
             install_hint="-"
           fi
           ;;
         *)
           if ! dependency_installed "$dependency_name" "$dependency_type"; then
             state="not_installed"
-            detail="未找到 ${adapter_name}"
-            recovery_action="先补安装；现在也可以直接走手动入口"
+            detail="${adapter_name} not found"
+            recovery_action="Install the adapter first; you can also use the manual entry path now"
             install_hint="$(default_install_hint "$source_id" "$adapter_name")"
           else
             state="available"
-            detail="${adapter_name} 已可用"
-            recovery_action="继续自动提取"
+            detail="${adapter_name} is available"
+            recovery_action="Continue with auto-extraction"
             install_hint="-"
           fi
           ;;
       esac
       ;;
     *)
-      echo "未知来源分类：$source_category" >&2
+      echo "Unknown source category: $source_category" >&2
       exit 1
       ;;
   esac
@@ -280,9 +259,9 @@ classify_run_state() {
   local exit_code="$2"
   local output_path="$3"
 
-  # 校验 exit_code 为整数，防止 set -e 下非数字参数导致脚本崩溃
+  # Validate exit_code is an integer to prevent script crash from non-numeric args under set -e
   case "$exit_code" in
-    ''|*[!0-9-]*) echo "exit_code 必须是整数，收到：$exit_code" >&2; exit 1 ;;
+    ''|*[!0-9-]*) echo "exit_code must be an integer, got: $exit_code" >&2; exit 1 ;;
   esac
 
   local row
@@ -310,8 +289,8 @@ EOF
       "$source_id" \
       "$source_label" \
       "runtime_failed" \
-      "自动提取执行失败" \
-      "可以先重试一次；如果还不行，就改走手动入口" \
+      "Auto-extraction execution failed" \
+      "Try again; if it still fails, use the manual entry path" \
       "-" \
       "$fallback_hint"
     return 0
@@ -322,8 +301,8 @@ EOF
       "$source_id" \
       "$source_label" \
       "empty_result" \
-      "自动提取完成，但没有拿到有效正文" \
-      "请手动补全文本后继续主线" \
+      "Auto-extraction completed but no valid content was retrieved" \
+      "Please manually provide the text and continue with the pipeline" \
       "-" \
       "$fallback_hint"
     return 0
@@ -333,8 +312,8 @@ EOF
     "$source_id" \
     "$source_label" \
     "available" \
-    "自动提取已拿到有效正文" \
-    "继续进入主线" \
+    "Auto-extraction retrieved valid content" \
+    "Continue into the pipeline" \
     "-" \
     "$fallback_hint"
 }
@@ -363,16 +342,16 @@ print_summary_human() {
 $row
 EOF
 
-    printf '%s\n' "- ${source_label}：${state_label_value}。${detail}。"
-    printf '%s\n' "  下一步：${recovery_action}。"
+    printf '%s\n' "- ${source_label}: ${state_label_value}. ${detail}."
+    printf '%s\n' "  Next step: ${recovery_action}."
     if [ "$install_hint" != "-" ]; then
       if [ "$state" = "available" ]; then
-        printf '%s\n' "  补充说明：${install_hint}。"
+        printf '%s\n' "  Note: ${install_hint}."
       else
-        printf '%s\n' "  安装提示：${install_hint}。"
+        printf '%s\n' "  Install hint: ${install_hint}."
       fi
     fi
-    printf '%s\n' "  回退方式：${fallback_hint}。"
+    printf '%s\n' "  Fallback: ${fallback_hint}."
   done <<EOF
 $(print_summary | tail -n +2)
 EOF

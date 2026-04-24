@@ -1,5 +1,5 @@
 ---
-tags: [主题]
+tags: [topic]
 created: {{DATE}}
 updated: {{DATE}}
 sources: []
@@ -7,29 +7,29 @@ sources: []
 
 # {{TOPIC_NAME}}
 
-> 一句话概括这个主题的核心问题或方向
+> One-sentence summary of the core question or direction of this topic
 
-## 核心观点
+## Core Insights
 
-（从多个素材中综合出来的关于这个主题的核心认知）
+(Key understanding synthesized from multiple sources about this topic)
 
-## 素材汇总
+## Source Summary
 
-（列出所有讨论过这个主题的素材，标注每篇的核心贡献）
+(List all sources that discuss this topic, noting each one's core contribution)
 
-| 素材 | 核心贡献 | 详见 |
-|------|----------|------|
-| （素材名） | （一句话） | [[素材摘要页]] |
+| Source | Core Contribution | See |
+|--------|-------------------|-----|
+| (source name) | (one sentence) | [[Source summary page]] |
 
-## 关键概念
+## Key Concepts
 
-（这个主题涉及的关键概念，链接到对应实体页）
+(Important concepts related to this topic, linked to corresponding entity pages)
 
-- [[概念1]] — 简要说明
-- [[概念2]] — 简要说明
+- [[Concept 1]] — brief explanation
+- [[Concept 2]] — brief explanation
 
-## 未解决的问题
+## Open Questions
 
-（素材中提到但没有答案的问题，或素材之间存在矛盾的地方）
+(Questions raised but unanswered in sources, or areas of contradiction between sources)
 
-## 相关页面
+## Related Pages
