@@ -9,7 +9,6 @@
 3. **Wire up runtime learning state and right-side learning explanation** — DONE
 4. **Add learning cockpit regression tests** — DONE
 
-> Design doc: `~/.gstack/projects/sdyckjq-lab-llm-wiki-skill/kangjiaqi-main-design-20260423-084646.md`
 > Implementation plan: `docs/plans/2026-04-23-learning-cockpit-implementation-plan.md`
 > Branch: `feat/learning-cockpit` (first 4 items merged, not yet pushed/PR'd)
 

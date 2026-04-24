@@ -18,7 +18,7 @@ bash install.sh --platform hermes
 
 Default install location: `~/.hermes/skills/llm-wiki`.
 
-By default, only the core wiki mainline is prepared. If you also need automatic extraction for web pages / X / WeChat Official Accounts / YouTube / Zhihu, run:
+By default, only the core wiki mainline is prepared. If you also need automatic extraction for web pages / X / YouTube, run:
 
 ```bash
 bash install.sh --platform hermes --with-optional-adapters

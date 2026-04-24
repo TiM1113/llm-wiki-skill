@@ -11,7 +11,7 @@
 | **Positioning** | Harness-attached Skill, 10 workflow knowledge base | Self-maintained knowledge base Agent, 4 core workflows |
 | **Language** | Shell + Markdown | Python + Markdown |
 | **Stars** | — | ~1,971 |
-| **Data Collection** | **Strong**: 10 source adapters (web/X/WeChat/YouTube/Zhihu/PDF/notes etc.) | **None**: Requires manual preparation of materials to raw/ |
+| **Data Collection** | **Strong**: source adapters (web/X/YouTube/PDF/notes etc.) | **None**: Requires manual preparation of materials to raw/ |
 | **Runtime** | Runs inside Claude Code / Codex / OpenClaw | Independent Python script or Agent-internal |
 
 ---
