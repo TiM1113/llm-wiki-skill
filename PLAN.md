@@ -101,7 +101,7 @@ Skeleton is qualified, 0 CRITICAL GAPs, 0 blocking issues. Improvement direction
 
 2. **Add one-click install command to README**:
    ```bash
-   git clone https://github.com/sdyckjq-lab/llm-wiki-skill.git ~/.claude/skills/llm-wiki && bash ~/.claude/skills/llm-wiki/setup.sh
+   git clone https://github.com/TiM1113/llm-wiki-skill.git ~/.claude/skills/llm-wiki && bash ~/.claude/skills/llm-wiki/setup.sh
    ```
 
 3. **Add Chrome check to setup.sh** (merged with P2)

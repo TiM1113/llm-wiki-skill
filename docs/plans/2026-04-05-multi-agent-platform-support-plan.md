@@ -1,9 +1,9 @@
-<!-- /autoplan restore point: /Users/kangjiaqi/.gstack/projects/sdyckjq-lab-llm-wiki-skill/main-autoplan-restore-20260405-165224.md -->
+<!-- /autoplan restore point: ~/.gstack/projects/llm-wiki-skill/main-autoplan-restore-20260405-165224.md -->
 ---
 date: 2026-04-05
 topic: multi-agent-platform-support
 status: reviewed
-requirements: /Users/kangjiaqi/Desktop/project/llm-wiki-skill/docs/brainstorms/2026-04-05-multi-agent-platform-support-requirements.md
+requirements: ~/Desktop/project/llm-wiki-skill/docs/brainstorms/2026-04-05-multi-agent-platform-support-requirements.md
 ---
 
 # llm-wiki multi-platform adaptation implementation plan
@@ -39,24 +39,24 @@ This isn't a "copy problem" but a problem caused by product entry, repo structur
 
 ### Current System State
 
-- Current main capability centralized in [SKILL.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/SKILL.md)
-- Install logic centralized in [setup.sh](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/setup.sh)
-- Initialization logic centralized in [scripts/init-wiki.sh](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/scripts/init-wiki.sh)
-- Platform instructions currently scattered in [README.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/README.md), [CLAUDE.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/CLAUDE.md), [AGENTS.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/AGENTS.md)
+- Current main capability centralized in [SKILL.md](~/Desktop/project/llm-wiki-skill/SKILL.md)
+- Install logic centralized in [setup.sh](~/Desktop/project/llm-wiki-skill/setup.sh)
+- Initialization logic centralized in [scripts/init-wiki.sh](~/Desktop/project/llm-wiki-skill/scripts/init-wiki.sh)
+- Platform instructions currently scattered in [README.md](~/Desktop/project/llm-wiki-skill/README.md), [CLAUDE.md](~/Desktop/project/llm-wiki-skill/CLAUDE.md), [AGENTS.md](~/Desktop/project/llm-wiki-skill/AGENTS.md)
 - Most-recent-30-days frequently-modified files concentrated in `SKILL.md`, `README.md`, `setup.sh`, `scripts/init-wiki.sh`
 
 ### In-Flight / Known Context
 
 - Current branch is `main`
 - No current stash
-- Before this plan started, the repo had no `TODOS.md`; existing todos mainly in [PLAN.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/PLAN.md)
-- [PLAN.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/PLAN.md) has already clearly pointed out "insufficient platform coverage" and "too-tight Claude Code binding" as current problems
+- Before this plan started, the repo had no `TODOS.md`; existing todos mainly in [PLAN.md](~/Desktop/project/llm-wiki-skill/PLAN.md)
+- [PLAN.md](~/Desktop/project/llm-wiki-skill/PLAN.md) has already clearly pointed out "insufficient platform coverage" and "too-tight Claude Code binding" as current problems
 - Found one structural problem directly related to this plan:
   - Install path in repo appears in three forms `~/.claude/skills`, `~/.Codex/skills`, and the actual environment's `~/.codex/skills`; without unifying them, confusion will persist
 
 ### Relevant Design Context
 
-- There's an existing design doc [kangjiaqi-unknown-design-20260405-125420.md](/Users/kangjiaqi/.gstack/projects/LLMknowledgeskill/kangjiaqi-unknown-design-20260405-125420.md)
+- There's an existing design doc [legacy-unknown-design-20260405-125420.md](~/.gstack/projects/LLMknowledgeskill/legacy-unknown-design-20260405-125420.md)
 - That design doc focuses on "domestic beginner llm-wiki"; can reuse its product goals and low-threshold requirements
 - But that design doc defaults platform to Claude Code; insufficient to directly answer this multi-platform question
 
@@ -64,13 +64,13 @@ This isn't a "copy problem" but a problem caused by product entry, repo structur
 
 | Sub-problem | Existing asset | How we should reuse it |
 |-------------|----------------|------------------------|
-| Knowledge base workflow definitions | [SKILL.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/SKILL.md) | Continue as main capability source, but remove platform-hardcoded statements |
-| Knowledge base directories and templates | [templates/](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/templates) | Share directly, no platform forking |
-| Initialization script | [scripts/init-wiki.sh](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/scripts/init-wiki.sh) | Continue sharing; only remove Claude-specific closing copy |
-| Dependency install and environment check | [setup.sh](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/setup.sh) | Upgrade to unified installer rather than Claude-only |
-| Claude project instructions | [CLAUDE.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/CLAUDE.md) | Change to Claude adapter-layer instructions, not the sole product instructions |
-| Codex project instructions | [AGENTS.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/AGENTS.md) | Upgrade to one of the cross-platform shared instruction sources |
-| Existing install / DX conclusions | [PLAN.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/PLAN.md) | Reuse its conclusions about install failure points, paths, dependency checks |
+| Knowledge base workflow definitions | [SKILL.md](~/Desktop/project/llm-wiki-skill/SKILL.md) | Continue as main capability source, but remove platform-hardcoded statements |
+| Knowledge base directories and templates | [templates/](~/Desktop/project/llm-wiki-skill/templates) | Share directly, no platform forking |
+| Initialization script | [scripts/init-wiki.sh](~/Desktop/project/llm-wiki-skill/scripts/init-wiki.sh) | Continue sharing; only remove Claude-specific closing copy |
+| Dependency install and environment check | [setup.sh](~/Desktop/project/llm-wiki-skill/setup.sh) | Upgrade to unified installer rather than Claude-only |
+| Claude project instructions | [CLAUDE.md](~/Desktop/project/llm-wiki-skill/CLAUDE.md) | Change to Claude adapter-layer instructions, not the sole product instructions |
+| Codex project instructions | [AGENTS.md](~/Desktop/project/llm-wiki-skill/AGENTS.md) | Upgrade to one of the cross-platform shared instruction sources |
+| Existing install / DX conclusions | [PLAN.md](~/Desktop/project/llm-wiki-skill/PLAN.md) | Reuse its conclusions about install failure points, paths, dependency checks |
 
 ## Landscape Check
 
@@ -183,7 +183,7 @@ This is more stable than "forcing all platforms to share one entry file" and bet
 
 ## Compatibility / Migration
 
-- Keep existing [setup.sh](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/setup.sh) as a compatibility entry, don't delete directly
+- Keep existing [setup.sh](~/Desktop/project/llm-wiki-skill/setup.sh) as a compatibility entry, don't delete directly
 - `setup.sh` in the first phase only does one thing: delegate to the new installer and explicitly run Claude-compatible mode
 - Existing Claude users can continue to use the old command; won't immediately fail due to multi-platform refactoring
 - Codex path compatible with both `~/.codex` and `~/.Codex`, but planned to converge to one standard spelling with migration safety net
@@ -205,10 +205,10 @@ This is more stable than "forcing all platforms to share one entry file" and bet
 
 **Changes**
 
-- Transform [SKILL.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/SKILL.md) into shared core doc:
+- Transform [SKILL.md](~/Desktop/project/llm-wiki-skill/SKILL.md) into shared core doc:
   - Change platform-hardcoded statements like `AskUserQuestion`, `Read tool`, `Write tool`, `Skill tool` to platform-neutral statements
   - Keep 8 workflows and all knowledge base logic unchanged
-- Adjust [scripts/init-wiki.sh](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/scripts/init-wiki.sh) user prompt copy, no longer only mentioning Claude
+- Adjust [scripts/init-wiki.sh](~/Desktop/project/llm-wiki-skill/scripts/init-wiki.sh) user prompt copy, no longer only mentioning Claude
 - Clean up unnecessary Claude/Codex example bias in templates and schema, keep content semantics unchanged
 
 **Why first**
@@ -217,9 +217,9 @@ This is more stable than "forcing all platforms to share one entry file" and bet
 
 **Files likely touched**
 
-- [SKILL.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/SKILL.md)
-- [scripts/init-wiki.sh](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/scripts/init-wiki.sh)
-- [templates/schema-template.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/templates/schema-template.md)
+- [SKILL.md](~/Desktop/project/llm-wiki-skill/SKILL.md)
+- [scripts/init-wiki.sh](~/Desktop/project/llm-wiki-skill/scripts/init-wiki.sh)
+- [templates/schema-template.md](~/Desktop/project/llm-wiki-skill/templates/schema-template.md)
 
 **Exit criteria**
 
@@ -236,11 +236,11 @@ This is more stable than "forcing all platforms to share one entry file" and bet
   - Place Claude skill entry file and Claude-specific supplementary instructions
 - Add `platforms/codex/`
   - Place Codex skill entry / install instructions
-  - Complement with repo root [AGENTS.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/AGENTS.md)
+  - Complement with repo root [AGENTS.md](~/Desktop/project/llm-wiki-skill/AGENTS.md)
 - Add `platforms/openclaw/`
   - Place OpenClaw skill entry file
   - Prepare content for `~/.openclaw/skills` shared install pattern
-- Transform [CLAUDE.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/CLAUDE.md) and [AGENTS.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/AGENTS.md) into:
+- Transform [CLAUDE.md](~/Desktop/project/llm-wiki-skill/CLAUDE.md) and [AGENTS.md](~/Desktop/project/llm-wiki-skill/AGENTS.md) into:
   - Root shared install instructions + platform jump hints
   - Claude also reads project-common rules via `CLAUDE.md` import/shared text
 
@@ -250,8 +250,8 @@ This is more stable than "forcing all platforms to share one entry file" and bet
 
 **Files likely touched**
 
-- [CLAUDE.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/CLAUDE.md)
-- [AGENTS.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/AGENTS.md)
+- [CLAUDE.md](~/Desktop/project/llm-wiki-skill/CLAUDE.md)
+- [AGENTS.md](~/Desktop/project/llm-wiki-skill/AGENTS.md)
 - new: `platforms/claude/...`
 - new: `platforms/codex/...`
 - new: `platforms/openclaw/...`
@@ -268,7 +268,7 @@ This is more stable than "forcing all platforms to share one entry file" and bet
 
 **Changes**
 
-- Upgrade or split [setup.sh](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/setup.sh) into:
+- Upgrade or split [setup.sh](~/Desktop/project/llm-wiki-skill/setup.sh) into:
   - `install.sh`: unified entry
   - `setup.sh`: kept as compatibility shell, internally delegates to `install.sh --platform claude`
 - Installer has the following capabilities:
@@ -287,7 +287,7 @@ This is more stable than "forcing all platforms to share one entry file" and bet
 
 **Files likely touched**
 
-- [setup.sh](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/setup.sh)
+- [setup.sh](~/Desktop/project/llm-wiki-skill/setup.sh)
 - new: `install.sh`
 - optional: `scripts/install-lib.sh` only if `install.sh` obviously gets out of control; default is not to split helper first
 
@@ -303,7 +303,7 @@ This is more stable than "forcing all platforms to share one entry file" and bet
 
 **Changes**
 
-- Rewrite [README.md](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/README.md):
+- Rewrite [README.md](~/Desktop/project/llm-wiki-skill/README.md):
   - First screen no longer says "built for Claude Code"
   - Add "one-sentence install for agents"
   - Add unified command install
@@ -330,7 +330,7 @@ This is more stable than "forcing all platforms to share one entry file" and bet
 
 **Changes**
 
-- Extend [tests/regression.sh](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/tests/regression.sh) or add smoke tests:
+- Extend [tests/regression.sh](~/Desktop/project/llm-wiki-skill/tests/regression.sh) or add smoke tests:
   - Simulate Claude / Codex / OpenClaw install in temp HOME directories respectively
   - Verify key files exist after install, paths correct, entry files readable
   - Keep compat regression test for old `setup.sh`, ensure existing Claude install command doesn't regress
@@ -524,7 +524,7 @@ Each platform must prove:
 
 ## Independent Codex Notes
 
-- Existing [tests/regression.sh](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/tests/regression.sh) and [setup.sh](/Users/kangjiaqi/Desktop/project/llm-wiki-skill/setup.sh) are both typical Claude-only assumption sources; so migration plan must treat "old command doesn't regress" as a first-class constraint.
+- Existing [tests/regression.sh](~/Desktop/project/llm-wiki-skill/tests/regression.sh) and [setup.sh](~/Desktop/project/llm-wiki-skill/setup.sh) are both typical Claude-only assumption sources; so migration plan must treat "old command doesn't regress" as a first-class constraint.
 - Installer shouldn't split into multi-layer helpers in the first round; first do explicit `--platform`, dry-run, and compatibility shell well, then decide whether abstraction is needed.
 
 <!-- AUTONOMOUS DECISION LOG -->

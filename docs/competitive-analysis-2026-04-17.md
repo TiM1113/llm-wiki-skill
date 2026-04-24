@@ -7,7 +7,7 @@
 
 | | **llm-wiki-skill (this project)** | **llm-wiki-agent** |
 |---|---|---|
-| **URL** | https://github.com/sdyckjq-lab/llm-wiki-skill | https://github.com/SamurAIGPT/llm-wiki-agent |
+| **URL** | https://github.com/TiM1113/llm-wiki-skill | https://github.com/SamurAIGPT/llm-wiki-agent |
 | **Positioning** | Harness-attached Skill, 10 workflow knowledge base | Self-maintained knowledge base Agent, 4 core workflows |
 | **Language** | Shell + Markdown | Python + Markdown |
 | **Stars** | — | ~1,971 |

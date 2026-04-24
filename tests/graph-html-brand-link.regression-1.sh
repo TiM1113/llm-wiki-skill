@@ -39,7 +39,7 @@ test_graph_html_has_brand_repo_link() {
     build_graph_html_fixture "$tmp_dir"
     html="$tmp_dir/wiki/knowledge-graph.html"
 
-    assert_file_contains "$html" '<a class="brand__mark" href="https://github.com/sdyckjq-lab/llm-wiki-skill"'
+    assert_file_contains "$html" '<a class="brand__mark" href="https://github.com/TiM1113/llm-wiki-skill"'
     assert_file_contains "$html" 'target="_blank" rel="noopener"'
 
     rm -rf "$tmp_dir"
