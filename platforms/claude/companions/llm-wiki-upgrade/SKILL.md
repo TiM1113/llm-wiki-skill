@@ -30,7 +30,7 @@ If `SKILL_DIR` does not exist, inform the user that llm-wiki is not installed an
 
 ```bash
 TMP_DIR=$(mktemp -d)
-git clone --depth 1 https://github.com/sdyckjq-lab/llm-wiki-skill.git "$TMP_DIR/llm-wiki-skill" 2>&1
+git clone --depth 1 https://github.com/TiM1113/llm-wiki-skill.git "$TMP_DIR/llm-wiki-skill" 2>&1
 echo "CLONE_EXIT=$?"
 ```
 

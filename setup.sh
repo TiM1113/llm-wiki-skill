@@ -1,5 +1,5 @@
-# Deprecated: please use bash install.sh --platform claude
 #!/bin/bash
+# Deprecated: please use bash install.sh --platform claude
 # Claude legacy entry point compatibility wrapper
 set -euo pipefail
 

@@ -194,9 +194,9 @@ All user-facing output and newly written wiki content is generated according to 
    - If the user has no preference, default to "My Knowledge Base"
 
 2. **Ask for the knowledge base language** (prompt the user first):
-   - "What language should the knowledge base content use? Chinese / English (default: Chinese)"
-   - Options: `zh` (Chinese) or `en` (English)
-   - If the user does not specify, default to `zh`
+   - "What language should the knowledge base content use? English / Chinese (default: English)"
+   - Options: `en` (English) or `zh` (Chinese)
+   - If the user does not specify, default to `en`
    - Record the choice as `WIKI_LANG` (`zh` or `en`)
 
 3. **Ask for the save location** (prompt the user first):

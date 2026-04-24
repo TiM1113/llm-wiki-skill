@@ -129,9 +129,7 @@ Both are based on the Karpathy llm-wiki methodology, sharing the same core archi
 | Video/Audio | No | Yes (built-in player) |
 | Web | Yes (baoyu-url-to-markdown) | Yes (Chrome extension Readability.js) |
 | X/Twitter | Yes (baoyu) | Yes (Chrome extension) |
-| WeChat Official Accounts | Yes (wechat-article-to-markdown) | No |
 | YouTube | Yes (youtube-transcript) | No |
-| Zhihu | Yes (baoyu) | No |
 | Xiaohongshu | Manual paste | No |
 
 ### 2.7 Other Features
@@ -154,7 +152,7 @@ Both are based on the Karpathy llm-wiki methodology, sharing the same core archi
 1. **Confidence annotation system** — Four-level annotation + traceability, competitor has nothing
 2. **Watercolor card style graph** — Visual uniqueness, self-contained offline HTML
 3. **Privacy self-check** — Sensitive information check before ingest
-4. **Chinese content sources** — WeChat Official Accounts, Zhihu, Xiaohongshu, YouTube
+4. **Multi-language content sources** — Web articles, X/Twitter, YouTube, Xiaohongshu (manual paste)
 5. **Zero-barrier install** — One-line install, no desktop app download needed
 6. **Multi-agent platform** — Claude Code / Codex / OpenClaw universal
 7. **Ingest format validation** — `validate-step1.sh` independent script validation

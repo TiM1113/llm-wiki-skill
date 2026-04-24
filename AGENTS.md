@@ -18,7 +18,7 @@ bash install.sh --platform codex
 
 Default install location: `~/.codex/skills/llm-wiki`. If the user's machine still uses the legacy `~/.Codex/skills`, the installer will automatically handle compatibility.
 
-By default, only the core wiki mainline is prepared. If you also need automatic extraction for web pages / X / WeChat Official Accounts / YouTube / Zhihu, run:
+By default, only the core wiki mainline is prepared. If you also need automatic extraction for web pages / X / YouTube, run:
 
 ```bash
 bash install.sh --platform codex --with-optional-adapters
